@@ -141,7 +141,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
-	stm, err = u.db.Prepare("INSERT INTO users (name, password, phone) VALUES ( ? , ? , ? )")
+	stm, err = u.db.Prepare("INSERT INTO users (name, mail, password, phone) VALUES ( ? , ? , ? , ? )")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -150,7 +150,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	res, _ = stm.Exec(user.Name, user.Password, user.Phone)
+	res, _ = stm.Exec(user.Name, user.Mail, user.Password, user.Phone)
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
