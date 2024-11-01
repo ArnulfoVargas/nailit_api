@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func main() {
-	godotenv.Load();
+	// godotenv.Load();
 
 	server := Server{}
 	server.openDB()
