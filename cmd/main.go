@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	// "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func main() {
-	// godotenv.Load();
+	godotenv.Load();
 
 	server := Server{}
 	server.openDB()
