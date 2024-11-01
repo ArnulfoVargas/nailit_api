@@ -10,10 +10,13 @@ func (server *Server) handleControllers() {
 
 	userGroup := server.app.Group("/user")
 
-	userGroup.Post("/login", userController.Login)
 	server.app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"hello": "world",
 		})
 	})
+
+	userGroup.Post("/login", userController.Login)
+	userGroup.Post("/register", userController.Register)
+	userGroup.Post("/validate", userController.ValidateToken)
 }
