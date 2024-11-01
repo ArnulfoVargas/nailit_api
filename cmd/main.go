@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 	_ "github.com/go-sql-driver/mysql"
 )
 
