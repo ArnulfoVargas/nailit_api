@@ -5,9 +5,6 @@ import (
 	"unicode"
 )
 
-type User struct {
-}
-
 type UserDTO struct {
 	Name     string `json:"name"`
 	Mail     string `json:"mail"`
