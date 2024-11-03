@@ -20,5 +20,6 @@ func (server *Server) handleControllers() {
 	userGroup.Post("/register", userController.Register)
 	userGroup.Post("/validate", userController.ValidateToken)
 	userGroup.Patch("/update/:id", userController.Edit)
-	userGroup.Delete("/update/:id", userController.Delete)
+	userGroup.Patch("/premium/:id", userController.ConvertToPremium)
+	userGroup.Delete("/delete/:id", userController.Delete)
 }

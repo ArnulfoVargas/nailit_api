@@ -51,7 +51,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		fmt.Println(err.Error())
 	}
 
-	data := make(map[string]string)
+	data := make(map[string]any)
 	err = json.Unmarshal([]byte(dencryptedData.Get("tk")), &data)
 
 	if err != nil {
@@ -61,7 +61,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT id_user FROM users WHERE id = ? AND mail = ? AND status = 1;")
+	stm, err := u.db.Prepare("SELECT id_user FROM users WHERE id_user = ? AND mail = ? AND status = 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -91,6 +91,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 
 		id = holder
 	}
+	defer rows.Close()
 
 	if  id == -1 {
 		return c.JSON(models.Response{
@@ -118,7 +119,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT id_user FROM users WHERE mail= ? AND status = 1")
+	stm, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE mail= ? AND status = 1")
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
@@ -126,7 +127,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := stm.Exec(user.Mail)
+	res, err := stm.Query(user.Mail)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -135,7 +136,19 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	if count, _ := res.RowsAffected(); count > 0 {
+	count := -1
+	
+	for res.Next() {
+		if count == -1 {
+			res.Scan(&count)
+		} else {
+			count = -1;
+			break
+		}
+	}
+	defer res.Close()
+
+	if count != 0 {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Mail already in use",
@@ -169,8 +182,8 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	res, _ = stm.Exec(user.Name, user.Mail, string(hash), user.Phone)
-	lastId, err := res.LastInsertId()
+	r, _ := stm.Exec(user.Name, user.Mail, string(hash), user.Phone)
+	lastId, err := r.LastInsertId()
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -189,7 +202,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error4",
+			ErrorMsg: "Unexpected error",
 		})
 	}
 
@@ -241,7 +254,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id = ? AND status = 1;")
+	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -250,12 +263,12 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := selectQ.Query(id)
+	r, err := selectQ.Query(id)
 	var count int = -1
 
-	for res.Next() {
+	for r.Next() {
 		if count == -1 {
-			res.Scan(&count)
+			r.Scan(&count)
 		} else {
 			count = -1
 			break
@@ -269,7 +282,9 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	selectQ, err = u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id != ? AND status = 1 AND mail = ?;")
+	r.Close();
+
+	selectQ, err = u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user != ? AND status = 1 AND mail = ?;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -278,19 +293,21 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err = selectQ.Query(id)
-	count = -1
+	res, err := selectQ.Query(id, userDto.Mail)
+	var cstar string = ""
 
 	for res.Next() {
-		if count == -1 {
-			res.Scan(&count)
+		if cstar == "" {
+			res.Scan(&cstar)
 		} else {
-			count = -1
+			cstar = ""
 			break
 		}
 	}
 
-	if count != 0 || err != nil {
+	defer res.Close()
+
+	if cstar != "0" || err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "New mail already in use",
@@ -306,8 +323,40 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	updateQ, _ := u.db.Prepare("UPDATE users SET name = ?, mail = ?, password = ?, phone = ?, updated_at = now() WHERE id = ?")
+	updateQ, _ := u.db.Prepare("UPDATE users SET name = ?, mail = ?, password = ?, phone = ?, updated_at = now() WHERE id_user = ?")
 	_, err = updateQ.Exec(userDto.Name, userDto.Mail, string(hashP), userDto.Phone, id)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	tkData := fiber.Map{
+		"id" : id,
+		"mail": userDto.Mail,
+	}
+
+	tkJson, err := json.Marshal(tkData)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+	pBuilder := paseto.NewV2()
+	privateKey := ed25519.NewKeyFromSeed([]byte(os.Getenv("PASETO_KEY")))
+
+	token := paseto.JSONToken{
+		Expiration: time.Now().Add(time.Hour * 24 * 7),
+		Audience: "auth",
+		IssuedAt: time.Now(),
+	}
+	token.Set("tk", string(tkJson))
+
+	tk, err := pBuilder.Sign(privateKey, token, "nailit")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -321,6 +370,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		Body: fiber.Map{
 			"id": id,
 			"user" : userDto,
+			"tk" : tk,
 		},
 	})
 }
@@ -335,7 +385,7 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id = ? AND status = 1;")
+	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -363,7 +413,7 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		})
 	}	
 	
-	updateQ, _ := u.db.Prepare("UPDATE users SET status = 0 WHERE id = ?;")
+	updateQ, _ := u.db.Prepare("UPDATE users SET status = 0 WHERE id_user = ?;")
 	_, err = updateQ.Exec(id)
 
 	if err != nil {
@@ -406,6 +456,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+	defer rows.Close()
 
 	userId := -1;
 	userPassword := ""
@@ -469,6 +520,82 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 			"tk" : tk,
 			"id" : userId,
 			"mail": userDto.Mail,
+		},
+	})
+}
+
+func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	stm, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE id_user = ? AND status = 1;")
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: err.Error(),
+		})
+	}
+
+	res, err := stm.Query(id)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+	defer res.Close()
+
+	var count = -1
+
+	for res.Next() {
+		if (count == -1) {
+			res.Scan(&count)
+		} else {
+			count = -1
+			break
+		}
+	}
+
+	if count != 1 {
+		return c.JSON(models.Response{
+			Status: http.StatusUnauthorized,
+			ErrorMsg: "Cannot upgrade your account",
+		})
+	}
+
+	stm, err = u.db.Prepare("UPDATE users SET user_type = 1, updated_at = now(), premium_expiracy = ? WHERE id_user = ?")
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	expiracy := time.Now().Add(time.Hour * 24 * 30);
+	_, err = stm.Exec(expiracy, id)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	return c.JSON(models.Response{
+		Status: http.StatusOK,
+		ErrorMsg: "",
+		Body: fiber.Map{
+			"id" : id,
+			"expiracy" : expiracy.UnixMilli(),
 		},
 	})
 }
