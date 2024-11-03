@@ -110,7 +110,6 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 
 func (u *UserController) Register(c *fiber.Ctx) error {
 	user := models.UserDTO{}
-	println(c.Body())
 	utilities.ReadJson(c.Body(), &user)
 
 	if ok, err := user.ValidateUser(); !ok && err != nil {
@@ -469,7 +468,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 	if userId == -1 || userPassword == "" {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
+			ErrorMsg: "Incorrect mail or password",
 		})
 	}
 
