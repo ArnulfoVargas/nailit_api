@@ -110,6 +110,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 
 func (u *UserController) Register(c *fiber.Ctx) error {
 	user := models.UserDTO{}
+	println(c.Body())
 	utilities.ReadJson(c.Body(), &user)
 
 	if ok, err := user.ValidateUser(); !ok && err != nil {
