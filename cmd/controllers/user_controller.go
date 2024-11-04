@@ -17,6 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/cloudinary/cloudinary-go/v2/config"
 )
 
