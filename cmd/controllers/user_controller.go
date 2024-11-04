@@ -617,7 +617,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 	}
 
 	form, err := c.MultipartForm()
-	file := form.File["file"]
+	file := form.File["file"][0]
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -630,6 +630,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
 			ErrorMsg: "Cannot upload image",
+			Body: err.Error(),
 		})
 	}
 
@@ -643,6 +644,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 	}
 
 	_, err = stm.Exec(res.SecureURL, res.PublicID, id)
+	stm.Close()
 
 	if err != nil {
 		return c.JSON(models.Response{
