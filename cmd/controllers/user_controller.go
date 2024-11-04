@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/ed25519"
 	"database/sql"
 	"encoding/json"
@@ -14,6 +15,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/o1egl/paseto"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
+	"github.com/cloudinary/cloudinary-go/v2/config"
 )
 
 type UserController struct {
@@ -78,6 +84,8 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 			ErrorMsg: "Invalid user credentials",
 		})
 	}
+
+	stm.Close()
 
 	id := -1
 
@@ -147,6 +155,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		}
 	}
 	defer res.Close()
+	stm.Close()
 
 	if count != 0 {
 		return c.JSON(models.Response{
@@ -184,6 +193,8 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 
 	r, _ := stm.Exec(user.Name, user.Mail, string(hash), user.Phone)
 	lastId, err := r.LastInsertId()
+
+	stm.Close()
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -281,6 +292,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+	selectQ.Close()
 
 	r.Close();
 
@@ -314,6 +326,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
+	selectQ.Close()
 	hashP, err := bcrypt.GenerateFromPassword([]byte(userDto.Password), 5)
 
 	if err != nil {
@@ -332,6 +345,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+	updateQ.Close()
 
 	tkData := fiber.Map{
 		"id" : id,
@@ -346,6 +360,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+
 	pBuilder := paseto.NewV2()
 	privateKey := ed25519.NewKeyFromSeed([]byte(os.Getenv("PASETO_KEY")))
 
@@ -406,6 +421,8 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		}
 	}
 
+	selectQ.Close()
+
 	if count != 1 || err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
@@ -422,6 +439,8 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+
+	updateQ.Close()
 
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
@@ -456,6 +475,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+	stm.Close()
 	defer rows.Close()
 
 	userId := -1;
@@ -534,7 +554,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE id_user = ? AND status = 1;")
+	stmt, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE id_user = ? AND status = 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -543,7 +563,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := stm.Query(id)
+	res, err := stmt.Query(id)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -551,6 +571,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+	stmt.Close()
 	defer res.Close()
 
 	var count = -1
@@ -571,7 +592,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err = u.db.Prepare("UPDATE users SET user_type = 1, updated_at = now(), premium_expiracy = ? WHERE id_user = ?")
+	stm, err := u.db.Prepare("UPDATE users SET user_type = 1, updated_at = now(), premium_expiracy = ? WHERE id_user = ?")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -589,6 +610,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
+	stm.Close()
 
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
@@ -599,3 +621,138 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 		},
 	})
 }
+
+func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+
+	stm, err := u.db.Prepare("SELECT image_url, image_public_id FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	row := stm.QueryRow(id)
+	var imgUrl string = ""
+	var imgPublicId string = ""
+
+	err = row.Scan(&imgUrl, &imgPublicId)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	stm.Close()
+
+	cld, ctx := creds()
+
+	if imgPublicId != "" {
+		cld.Upload.Destroy(ctx, uploader.DestroyParams{
+			PublicID: imgPublicId,
+		})
+	}
+
+	file, _ := c.FormFile("file")
+	res, err := uploadImage(cld, ctx, file)
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusBadRequest,
+			ErrorMsg: "Cannot upload image",
+		})
+	}
+
+	stm, err = u.db.Prepare("UPDATE users SET image_url = ?, image_public_id = ? WHERE id_user = ? AND status = 1 LIMIT 1;")
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	_, err = stm.Exec(res.SecureURL, res.PublicID, id)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	return c.JSON(models.Response{
+		Status: http.StatusOK,
+		Body: res.SecureURL,
+	})
+}
+
+func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id")
+
+	stm, err := u.db.Prepare("SELECT image_url, image_public_id FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	row := stm.QueryRow(id)
+	var imgUrl string = ""
+	var imgPublicId string = ""
+
+	err = row.Scan(&imgUrl, &imgPublicId)
+
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	if imgPublicId != "" {
+		cld, ctx := creds()
+
+		cld.Upload.Destroy(ctx, uploader.DestroyParams{
+			PublicID: imgPublicId,
+		})
+
+		return c.JSON(models.Response{
+			Status:   http.StatusOK,
+			ErrorMsg: "",
+			Body:     nil,
+		})
+	}
+
+	return c.JSON(models.Response{
+		Status: http.StatusNoContent,
+		ErrorMsg: "No such image",
+	})
+}
+
+func creds() (*cloudinary.Cloudinary, context.Context){
+	cld, _ := cloudinary.NewFromParams(
+		os.Getenv("CLOUDINARY_CLOUD"), 
+		os.Getenv("CLOUDINARY_KEY"), 
+		os.Getenv("CLOUDINARY_SECRET"))
+
+	cld.Config.URL = config.URL{}
+	cld.Config.URL.Secure = true;
+	ctx := context.Background()
+
+	return cld, ctx
+}
+
+func uploadImage(cld *cloudinary.Cloudinary, ctx context.Context, img interface{}) (*uploader.UploadResult, error) {
+	res, err := cld.Upload.Upload(ctx, img, uploader.UploadParams{
+		PublicID: os.Getenv("CLOUDINARY_PUBLIC_ID"),
+		UniqueFilename: api.Bool(true),
+		Overwrite: api.Bool(false),
+	})
+	return res, err
+} 

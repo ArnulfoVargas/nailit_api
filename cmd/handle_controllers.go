@@ -22,4 +22,6 @@ func (server *Server) handleControllers() {
 	userGroup.Patch("/update/:id", userController.Edit)
 	userGroup.Patch("/premium/:id", userController.ConvertToPremium)
 	userGroup.Delete("/delete/:id", userController.Delete)
+	userGroup.Put("/profile/:id", userController.UpdateProfileImage)
+	userGroup.Delete("/profile/:id", userController.RemoveProfileImage)
 }
