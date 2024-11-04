@@ -17,8 +17,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/cloudinary/cloudinary-go/v2"
-	"github.com/cloudinary/cloudinary-go/v2/api"
-	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/cloudinary/cloudinary-go/v2/config"
 )
 
@@ -719,10 +717,6 @@ func creds() (*cloudinary.Cloudinary, context.Context){
 }
 
 func uploadImage(cld *cloudinary.Cloudinary, ctx context.Context, img interface{}) (*uploader.UploadResult, error) {
-	res, err := cld.Upload.Upload(ctx, img, uploader.UploadParams{
-		PublicID: os.Getenv("CLOUDINARY_PUBLIC_ID"),
-		UniqueFilename: api.Bool(true),
-		Overwrite: api.Bool(false),
-	})
+	res, err := cld.Upload.Upload(ctx, img, uploader.UploadParams{})
 	return res, err
 } 
