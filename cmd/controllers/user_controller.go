@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -619,10 +618,6 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 
 	form, err := c.MultipartForm()
 	files := form.File["file"]
-
-	for k, v := range form.File {
-		log.Println(k, v)
-	}
 
 	if err != nil || len(files) == 0 {
 		return c.JSON(models.Response{
