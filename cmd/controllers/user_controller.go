@@ -616,7 +616,9 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 		})
 	}
 
-	file, err := c.FormFile("file")
+	form, err := c.MultipartForm()
+	file := form.File["file"]
+
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
