@@ -616,7 +616,10 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 		})
 	}
 
-	file, _ := c.FormFile("file")
+	file, err := c.FormFile("file")
+	if err != nil {
+		panic(err.Error())
+	}
 	res, err := uploadImage(cld, ctx, file)
 	if err != nil {
 		return c.JSON(models.Response{
