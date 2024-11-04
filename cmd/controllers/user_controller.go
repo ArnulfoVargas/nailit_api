@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -617,20 +618,24 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 	}
 
 	form, err := c.MultipartForm()
-	file := form.File["file"][0]
+	files := form.File["file"]
 
-	if err != nil {
+	for k, v := range form.File {
+		log.Println(k, v)
+	}
+
+	if err != nil || len(files) == 0 {
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
-			ErrorMsg: err.Error(),
+			ErrorMsg: "File doesnt exist",
 		})
 	}
+	file := files[0]
 	res, err := uploadImage(cld, ctx, file)
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
 			ErrorMsg: "Cannot upload image",
-			Body: err.Error(),
 		})
 	}
 
