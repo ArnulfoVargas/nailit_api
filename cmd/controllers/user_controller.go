@@ -628,6 +628,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
 			ErrorMsg: "File doesnt exist",
+			Body: form.File,
 		})
 	}
 	file := files[0]
