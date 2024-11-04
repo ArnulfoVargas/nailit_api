@@ -22,6 +22,12 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2/config"
 )
 
+type TokenData struct {
+	Id int64 `json:"id"`
+	Mail string `json:"mail"`
+	Password string `json:"password"`
+}
+
 type UserController struct {
 	db *sql.DB
 }
@@ -57,7 +63,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		fmt.Println(err.Error())
 	}
 
-	data := make(map[string]any)
+	data := TokenData{}
 	err = json.Unmarshal([]byte(dencryptedData.Get("tk")), &data)
 
 	if err != nil {
@@ -67,7 +73,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT id_user FROM users WHERE id_user = ? AND mail = ? AND status = 1;")
+	stm, err := u.db.Prepare("SELECT id_user, name, mail, phone, user_type, image_url FROM users WHERE id_user = ? AND mail = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -76,32 +82,17 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		})
 	}
 
-	rows, err := stm.Query(data["id"], data["mail"])
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
-			ErrorMsg: "Invalid user credentials",
-		})
-	}
-
+	row := stm.QueryRow(data.Id, data.Mail)
 	stm.Close()
 
-	id := -1
-
-	for rows.Next() {
-		var holder int
-
-		if err := rows.Scan(&holder); err != nil || id != -1 {
-			id = -1
-			break;
-		}
-
-		id = holder
+	var userId int = -1;
+	user := models.UserDTO{
+		Password: data.Password,
 	}
-	defer rows.Close()
 
-	if  id == -1 {
+	err = row.Scan(&userId, &user.Name, &user.Mail, &user.Phone, &user.UserType, &user.ProfilePic)
+
+	if  err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusUnauthorized,
 			ErrorMsg: "Invalid user credentials",
@@ -111,7 +102,8 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 	return c.JSON(models.Response{
 		Status: http.StatusAccepted,
 		Body: fiber.Map{
-			"id": id,
+			"id": userId,
+			"user" : user,
 		},
 	})
 }
@@ -127,7 +119,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE mail= ? AND status = 1")
+	stm, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE mail= ? AND status = 1 LIMIT 1;")
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
@@ -135,26 +127,17 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := stm.Query(user.Mail)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
+	res := stm.QueryRow(user.Mail)
 	count := -1
+	err = res.Scan(&count)
 	
-	for res.Next() {
-		if count == -1 {
-			res.Scan(&count)
-		} else {
-			count = -1;
-			break
-		}
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
 	}
-	defer res.Close()
+
 	stm.Close()
 
 	if count != 0 {
@@ -182,7 +165,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		IssuedAt: time.Now(),
 	}
 
-	stm, err = u.db.Prepare("INSERT INTO users (name, mail, password, phone) VALUES ( ? , ? , ? , ? )")
+	stm, err = u.db.Prepare("INSERT INTO users (name, mail, password, phone) VALUES ( ? , ? , ? , ? ) LIMIT 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -203,9 +186,10 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	tkData := fiber.Map{
-		"id" : lastId,
-		"mail": user.Mail,
+	tkData := TokenData {
+		Id: lastId,
+		Mail: user.Mail,
+		Password: user.Password,
 	}
 
 	tkJson, err := json.Marshal(tkData)
@@ -265,7 +249,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1;")
+	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -274,17 +258,10 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	r, err := selectQ.Query(id)
+	r := selectQ.QueryRow(id)
 	var count int = -1
 
-	for r.Next() {
-		if count == -1 {
-			r.Scan(&count)
-		} else {
-			count = -1
-			break
-		}
-	}
+	err = r.Scan(&count)
 
 	if count != 1 || err != nil {
 		return c.JSON(models.Response{
@@ -294,9 +271,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	}
 	selectQ.Close()
 
-	r.Close();
-
-	selectQ, err = u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user != ? AND status = 1 AND mail = ?;")
+	selectQ, err = u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user != ? AND status = 1 AND mail = ? LIMIT 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -305,19 +280,10 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := selectQ.Query(id, userDto.Mail)
+	res := selectQ.QueryRow(id, userDto.Mail)
 	var cstar string = ""
 
-	for res.Next() {
-		if cstar == "" {
-			res.Scan(&cstar)
-		} else {
-			cstar = ""
-			break
-		}
-	}
-
-	defer res.Close()
+	err = res.Scan(&cstar)
 
 	if cstar != "0" || err != nil {
 		return c.JSON(models.Response{
@@ -336,7 +302,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	updateQ, _ := u.db.Prepare("UPDATE users SET name = ?, mail = ?, password = ?, phone = ?, updated_at = now() WHERE id_user = ?")
+	updateQ, _ := u.db.Prepare("UPDATE users SET name = ?, mail = ?, password = ?, phone = ?, updated_at = now() WHERE id_user = ? LIMIT 1;")
 	_, err = updateQ.Exec(userDto.Name, userDto.Mail, string(hashP), userDto.Phone, id)
 
 	if err != nil {
@@ -347,9 +313,10 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	}
 	updateQ.Close()
 
-	tkData := fiber.Map{
-		"id" : id,
-		"mail": userDto.Mail,
+	tkData := TokenData {
+		Id: int64(id),
+		Mail: userDto.Mail,
+		Password: userDto.Password,
 	}
 
 	tkJson, err := json.Marshal(tkData)
@@ -400,7 +367,7 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1;")
+	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -409,17 +376,10 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	res, err := selectQ.Query(id)
+	res := selectQ.QueryRow(id)
 	var count int = -1
 
-	for res.Next() {
-		if count == -1 {
-			res.Scan(&count)
-		} else {
-			count = -1
-			break
-		}
-	}
+	err = res.Scan(&count)
 
 	selectQ.Close()
 
@@ -430,7 +390,7 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		})
 	}	
 	
-	updateQ, _ := u.db.Prepare("UPDATE users SET status = 0 WHERE id_user = ?;")
+	updateQ, _ := u.db.Prepare("UPDATE users SET status = 0 WHERE id_user = ? LIMIT 1;")
 	_, err = updateQ.Exec(id)
 
 	if err != nil {
@@ -458,7 +418,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT id_user, password FROM users WHERE mail = ? AND status = 1 LIMIT 1")
+	stm, err := u.db.Prepare("SELECT id_user, password, name, mail, phone, user_type, image_url FROM users WHERE mail = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -467,22 +427,20 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		})
 	}
 	
-	rows, err := stm.Query(userDto.Mail)
+	row := stm.QueryRow(userDto.Mail)
+
+	stm.Close()
+
+	userId := -1;
+	userPassword := ""
+
+	err = row.Scan(&userId, &userPassword, &userDto.Name, &userDto.Mail, &userDto.Phone, &userDto.UserType, &userDto.ProfilePic)
 
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
-	}
-	stm.Close()
-	defer rows.Close()
-
-	userId := -1;
-	userPassword := ""
-
-	for rows.Next() {
-		rows.Scan(&userId, &userPassword)
 	}
 
 	if userId == -1 || userPassword == "" {
@@ -510,9 +468,10 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		IssuedAt: time.Now(),
 	}
 
-	tkData := fiber.Map{
-		"id" : userId,
-		"mail": userDto.Mail,
+	tkData := TokenData {
+		Id: int64(userId),
+		Mail: userDto.Mail,
+		Password: userDto.Password,
 	}
 
 	tkJson, err := json.Marshal(tkData)
@@ -539,7 +498,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		Body: fiber.Map{
 			"tk" : tk,
 			"id" : userId,
-			"mail": userDto.Mail,
+			"user" : userDto,
 		},
 	})
 }

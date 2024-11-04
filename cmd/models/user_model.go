@@ -10,7 +10,8 @@ type UserDTO struct {
 	Mail     string `json:"mail"`
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
-	ProfilePic string `json:"profile_picture"`
+	UserType int 	`json:"user_type"`
+	ProfilePic string `json:"image_url"`
 }
 
 func (u *UserDTO) ValidateUser() (bool, error) {
