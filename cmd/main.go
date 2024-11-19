@@ -23,6 +23,7 @@ func main() {
 
 	server := Server{}
 	server.openDB()
+
 	server.port = ":"+os.Getenv("PORT")
 
 	server.app = fiber.New()

@@ -2,30 +2,19 @@ package controllers
 
 import (
 	"context"
-	"crypto/ed25519"
 	"database/sql"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/ArnulfoVargas/nailit_api.git/cmd/models"
 	"github.com/ArnulfoVargas/nailit_api.git/cmd/utilities"
 	"github.com/gofiber/fiber/v2"
-	"github.com/o1egl/paseto"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/cloudinary/cloudinary-go/v2/config"
 )
-
-type TokenData struct {
-	Id int64 `json:"id"`
-	Mail string `json:"mail"`
-	Password string `json:"password"`
-}
 
 type UserController struct {
 	db *sql.DB
@@ -49,21 +38,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 	}
 
 	token := b["pauth"]
-
-	tokenBuilder := paseto.NewV2()
-	privateKey := ed25519.NewKeyFromSeed([]byte(os.Getenv("PASETO_KEY")))
-	publicKey := privateKey.Public()
-	var dencryptedData paseto.JSONToken
-	var footer string
-
-	err = tokenBuilder.Verify(token, publicKey, &dencryptedData, &footer)
-
-	if (err != nil){
-		fmt.Println(err.Error())
-	}
-
-	data := TokenData{}
-	err = json.Unmarshal([]byte(dencryptedData.Get("tk")), &data)
+	data, err := models.ValidateToken(token)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -72,24 +47,11 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT id_user, name, mail, phone, user_type, image_url FROM users WHERE id_user = ? AND mail = ? AND status = 1 LIMIT 1;")
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
-			ErrorMsg: "Invalid user credentials",
-		})
-	}
-
-	row := stm.QueryRow(data.Id, data.Mail)
-	stm.Close()
-
-	var userId int = -1;
 	user := models.UserDTO{
 		Password: data.Password,
 	}
 
-	err = row.Scan(&userId, &user.Name, &user.Mail, &user.Phone, &user.UserType, &user.ProfilePic)
+	err = user.GetUserById(data.Id, u.db)
 
 	if  err != nil {
 		return c.JSON(models.Response{
@@ -101,7 +63,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 	return c.JSON(models.Response{
 		Status: http.StatusAccepted,
 		Body: fiber.Map{
-			"id": userId,
+			"id": data.Id,
 			"user" : user,
 		},
 	})
@@ -118,26 +80,14 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE mail= ? AND status = 1 LIMIT 1;")
+	count, err := user.CountUsersByMail(user.Mail, u.db)
+
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
-
-	res := stm.QueryRow(user.Mail)
-	count := -1
-	err = res.Scan(&count)
-	
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	stm.Close()
 
 	if count != 0 {
 		return c.JSON(models.Response{
@@ -146,7 +96,15 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 5)
+	hash, err := user.GeneratePasswordHash()
+	if err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	lastId, err := user.InsertUser(string(hash), u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -155,54 +113,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	pBuilder := paseto.NewV2()
-	privateKey := ed25519.NewKeyFromSeed([]byte(os.Getenv("PASETO_KEY")))
-
-	token := paseto.JSONToken{
-		Expiration: time.Now().Add(time.Hour * 24 * 7),
-		Audience: "auth",
-		IssuedAt: time.Now(),
-	}
-
-	stm, err = u.db.Prepare("INSERT INTO users (name, mail, password, phone) VALUES ( ? , ? , ? , ? ) LIMIT 1;")
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	r, _ := stm.Exec(user.Name, user.Mail, string(hash), user.Phone)
-	lastId, err := r.LastInsertId()
-
-	stm.Close()
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	tkData := TokenData {
-		Id: lastId,
-		Mail: user.Mail,
-		Password: user.Password,
-	}
-
-	tkJson, err := json.Marshal(tkData)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	token.Set("tk", string(tkJson))
-
-	tk, err := pBuilder.Sign(privateKey, token, "nailit")
+	tk, err := models.GeneratePasetoToken(&user, lastId)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -244,11 +155,20 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
-			ErrorMsg: "Invalid parameter",
+			ErrorMsg: "Invalid id",
 		})
 	}
 
-	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
+	valid, err := userDto.VerifyUserIdIsActive(id, u.db)	
+
+	if !valid || err != nil {
+		return c.JSON(models.Response{
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
+		})
+	}
+
+	count, err := userDto.CountUsersByMail(userDto.Mail, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -257,42 +177,14 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	r := selectQ.QueryRow(id)
-	var count int = -1
-
-	err = r.Scan(&count)
-
-	if count != 1 || err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-	selectQ.Close()
-
-	selectQ, err = u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user != ? AND status = 1 AND mail = ? LIMIT 1;")
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	res := selectQ.QueryRow(id, userDto.Mail)
-	var cstar string = ""
-
-	err = res.Scan(&cstar)
-
-	if cstar != "0" || err != nil {
+	if count != 0 {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "New mail already in use",
 		})
 	}
 
-	selectQ.Close()
-	hashP, err := bcrypt.GenerateFromPassword([]byte(userDto.Password), 5)
+	hashP, err := userDto.GeneratePasswordHash()
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -301,24 +193,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	updateQ, _ := u.db.Prepare("UPDATE users SET name = ?, mail = ?, password = ?, phone = ?, updated_at = now() WHERE id_user = ? LIMIT 1;")
-	_, err = updateQ.Exec(userDto.Name, userDto.Mail, string(hashP), userDto.Phone, id)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-	updateQ.Close()
-
-	tkData := TokenData {
-		Id: int64(id),
-		Mail: userDto.Mail,
-		Password: userDto.Password,
-	}
-
-	tkJson, err := json.Marshal(tkData)
+	err = userDto.UpdateUser(id, string(hashP), u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -327,17 +202,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	pBuilder := paseto.NewV2()
-	privateKey := ed25519.NewKeyFromSeed([]byte(os.Getenv("PASETO_KEY")))
-
-	token := paseto.JSONToken{
-		Expiration: time.Now().Add(time.Hour * 24 * 7),
-		Audience: "auth",
-		IssuedAt: time.Now(),
-	}
-	token.Set("tk", string(tkJson))
-
-	tk, err := pBuilder.Sign(privateKey, token, "nailit")
+	tk, err := models.GeneratePasetoToken(&userDto, int64(id))
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -366,31 +231,17 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	selectQ, err := u.db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
+	user := models.UserDTO{}
+	valid, err := user.VerifyUserIdIsActive(id, u.db)
 
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	res := selectQ.QueryRow(id)
-	var count int = -1
-
-	err = res.Scan(&count)
-
-	selectQ.Close()
-
-	if count != 1 || err != nil {
+	if !valid || err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}	
 	
-	updateQ, _ := u.db.Prepare("UPDATE users SET status = 0 WHERE id_user = ? LIMIT 1;")
-	_, err = updateQ.Exec(id)
+	err = user.DeleteUser(id, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -398,8 +249,6 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
-
-	updateQ.Close()
 
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
@@ -417,23 +266,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err := u.db.Prepare("SELECT id_user, password, name, mail, phone, user_type, image_url FROM users WHERE mail = ? AND status = 1 LIMIT 1;")
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-	
-	row := stm.QueryRow(userDto.Mail)
-
-	stm.Close()
-
-	userId := -1;
-	userPassword := ""
-
-	err = row.Scan(&userId, &userPassword, &userDto.Name, &userDto.Mail, &userDto.Phone, &userDto.UserType, &userDto.ProfilePic)
+	id, passwordHash, err := userDto.GetUserByMail(u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -442,14 +275,14 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	if userId == -1 || userPassword == "" {
+	if id == -1 || passwordHash == "" {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Incorrect mail or password",
 		})
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(userPassword), []byte(userDto.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(userDto.Password))
 
 	if (err != nil) {
 		return c.JSON(models.Response{
@@ -458,33 +291,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	pBuilder := paseto.NewV2()
-	privateKey := ed25519.NewKeyFromSeed([]byte(os.Getenv("PASETO_KEY")))
-
-	token := paseto.JSONToken{
-		Expiration: time.Now().Add(time.Hour * 24 * 7),
-		Audience: "auth",
-		IssuedAt: time.Now(),
-	}
-
-	tkData := TokenData {
-		Id: int64(userId),
-		Mail: userDto.Mail,
-		Password: userDto.Password,
-	}
-
-	tkJson, err := json.Marshal(tkData)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error4",
-		})
-	}
-
-	token.Set("tk", string(tkJson))
-
-	tk, err := pBuilder.Sign(privateKey, token, "nailit")
+	tk, err := models.GeneratePasetoToken(&userDto, int64(id))
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -496,7 +303,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 		Status: http.StatusOK,
 		Body: fiber.Map{
 			"tk" : tk,
-			"id" : userId,
+			"id" : id,
 			"user" : userDto,
 		},
 	})
@@ -512,45 +319,17 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 		})
 	}
 
-	stmt, err := u.db.Prepare("SELECT COUNT(*) FROM users WHERE id_user = ? AND status = 1;")
+	userDto := models.UserDTO{}
+	valid, err := userDto.VerifyUserIdIsActive(id, u.db)
 
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: err.Error(),
-		})
-	}
-
-	res, err := stmt.Query(id)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-	stmt.Close()
-	defer res.Close()
-
-	var count = -1
-
-	for res.Next() {
-		if (count == -1) {
-			res.Scan(&count)
-		} else {
-			count = -1
-			break
-		}
-	}
-
-	if count != 1 {
+	if !valid || err != nil{
 		return c.JSON(models.Response{
 			Status: http.StatusUnauthorized,
-			ErrorMsg: "Cannot upgrade your account",
+			ErrorMsg: "Invalid user",
 		})
 	}
 
-	stm, err := u.db.Prepare("UPDATE users SET user_type = 1, updated_at = now(), premium_expiracy = ? WHERE id_user = ?")
+	expiracy, err := userDto.UpgradeToPremium(id, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -558,17 +337,6 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
-
-	expiracy := time.Now().Add(time.Hour * 24 * 30);
-	_, err = stm.Exec(expiracy, id)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-	stm.Close()
 
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
@@ -583,7 +351,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
 
-	stm, err := u.db.Prepare("SELECT image_url, image_public_id FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
+	imgPublicId, err := models.GetProfilePublicID(id, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -591,21 +359,6 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 			ErrorMsg: "Unexpected error",
 		})
 	}
-
-	row := stm.QueryRow(id)
-	var imgUrl string = ""
-	var imgPublicId string = ""
-
-	err = row.Scan(&imgUrl, &imgPublicId)
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	stm.Close()
 
 	cld, ctx := creds()
 
@@ -625,6 +378,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 			Body: form.File,
 		})
 	}
+
 	file := files[0]
 	res, err := uploadImage(cld, ctx, file)
 	if err != nil {
@@ -634,17 +388,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 		})
 	}
 
-	stm, err = u.db.Prepare("UPDATE users SET image_url = ?, image_public_id = ? WHERE id_user = ? AND status = 1 LIMIT 1;")
-
-	if err != nil {
-		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
-		})
-	}
-
-	_, err = stm.Exec(res.SecureURL, res.PublicID, id)
-	stm.Close()
+	err = models.UpdateUserProfileImage(res.SecureURL, res.PublicID, id, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -662,7 +406,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
 
-	stm, err := u.db.Prepare("SELECT image_url, image_public_id FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
+	publicId, err := models.GetProfilePublicID(id, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -671,11 +415,18 @@ func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 		})
 	}
 
-	row := stm.QueryRow(id)
-	var imgUrl string = ""
-	var imgPublicId string = ""
+	if publicId == "" {
+		return c.JSON(models.Response{
+			Status: http.StatusNoContent,
+			ErrorMsg: "No such image",
+		})
+	}
 
-	err = row.Scan(&imgUrl, &imgPublicId)
+	cld, ctx := creds()
+
+	_, err = cld.Upload.Destroy(ctx, uploader.DestroyParams{
+		PublicID: publicId,
+	})
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -684,23 +435,19 @@ func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 		})
 	}
 
-	if imgPublicId != "" {
-		cld, ctx := creds()
+	err = models.UpdateUserProfileImage("", "", id, u.db)
 
-		cld.Upload.Destroy(ctx, uploader.DestroyParams{
-			PublicID: imgPublicId,
-		})
-
+	if err != nil {
 		return c.JSON(models.Response{
-			Status:   http.StatusOK,
-			ErrorMsg: "",
-			Body:     nil,
+			Status: http.StatusConflict,
+			ErrorMsg: "Unexpected error",
 		})
 	}
 
 	return c.JSON(models.Response{
-		Status: http.StatusNoContent,
-		ErrorMsg: "No such image",
+		Status:   http.StatusOK,
+		ErrorMsg: "",
+		Body:     nil,
 	})
 }
 
