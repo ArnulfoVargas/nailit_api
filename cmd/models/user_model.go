@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"regexp"
 	"time"
 	"unicode"
@@ -77,7 +78,7 @@ func (u UserDTO)VerifyUserIdIsActive(id int, db *sql.DB) (bool, error) {
 	stm, err := db.Prepare("SELECT COUNT(*) AS count FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
-		return false, err
+		return false, errors.New("invalid user")
 	}
 
 	defer stm.Close()
@@ -87,7 +88,7 @@ func (u UserDTO)VerifyUserIdIsActive(id int, db *sql.DB) (bool, error) {
 
 	err = row.Scan(&count)
 
-	return count == 1, err
+	return count == 1, errors.New("invalid user")
 }
 
 func (u UserDTO) CountUsersByMail(mail string, db *sql.DB) (int, error) {
@@ -231,7 +232,18 @@ func (u UserDTO) DeleteUser(id int, db *sql.DB) error {
 	defer stm.Close()
 
 	_, err = stm.Exec(id);
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	tag := Tag{
+		CreatedBy: int64(id),
+	}
+
+	go tag.DeleteAllTagsFromUserId(db)
+
+	return nil
 }
 
 func (u UserDTO) getPremiumExpiracyDate(id int, db *sql.DB) (time.Time, error) {

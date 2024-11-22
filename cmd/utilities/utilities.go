@@ -10,9 +10,9 @@ func ReadJson[T interface{}](body []byte, out T) error {
 
 	err := decoder.Decode(out)
 
-	if err != nil {
+  if err != nil {
 		return err
-	}
+  }
 
 	return nil
 }

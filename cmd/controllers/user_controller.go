@@ -30,6 +30,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 	b := make(map[string]string)
 
 	err := utilities.ReadJson(c.Body(), &b)
+	c.Status(http.StatusUnauthorized)
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusUnauthorized,
@@ -60,6 +61,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 		})
 	}
 
+	c.Status(http.StatusOK)
 	return c.JSON(models.Response{
 		Status: http.StatusAccepted,
 		Body: fiber.Map{
@@ -74,12 +76,14 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	utilities.ReadJson(c.Body(), &user)
 
 	if ok, err := user.ValidateUser(); !ok && err != nil {
+		c.Status(http.StatusBadRequest)
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
 			ErrorMsg: "Invalid fields",
 		})
 	}
 
+	c.Status(http.StatusInternalServerError)
 	count, err := user.CountUsersByMail(user.Mail, u.db)
 
 	if err != nil {
@@ -90,6 +94,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	}
 
 	if count != 0 {
+		c.Status(http.StatusConflict)
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Mail already in use",
@@ -122,8 +127,9 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 		})
 	}
 
+	c.Status(http.StatusCreated)
 	return c.JSON(models.Response{
-		Status: http.StatusOK,
+		Status: http.StatusCreated,
 		Body: fiber.Map{
 			"id": lastId,
 			"tk": tk,
@@ -134,6 +140,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 
 func (u *UserController) Edit(c *fiber.Ctx) error {
 	userDto := models.UserDTO{}
+	c.Status(http.StatusInternalServerError)
 
 	err := utilities.ReadJson(c.Body(), &userDto)
 	if err != nil {
@@ -144,6 +151,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	}
 
 	if ok, err := userDto.ValidateUser(); !ok && err != nil {
+		c.Status(http.StatusBadRequest)
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
 			ErrorMsg: "Invalid fields",
@@ -153,6 +161,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 
 	if err != nil {
+		c.Status(http.StatusBadRequest)
 		return c.JSON(models.Response{
 			Status: http.StatusBadRequest,
 			ErrorMsg: "Invalid id",
@@ -178,6 +187,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	}
 
 	if count != 0 {
+		c.Status(http.StatusConflict)
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "New mail already in use",
@@ -211,6 +221,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
+	c.Status(http.StatusOK)
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
 		Body: fiber.Map{
@@ -223,6 +234,11 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 
 func (u *UserController) Delete(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
+	statusCode := http.StatusBadRequest;
+
+	defer func() {
+		c.Status(statusCode)
+	}()
 
 	if err != nil {
 		return c.JSON(models.Response{
@@ -235,6 +251,7 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 	valid, err := user.VerifyUserIdIsActive(id, u.db)
 
 	if !valid || err != nil {
+		statusCode = http.StatusConflict
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
 			ErrorMsg: "Unexpected error",
@@ -244,12 +261,13 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 	err = user.DeleteUser(id, u.db)
 
 	if err != nil {
+		statusCode = http.StatusInternalServerError
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status: http.StatusInternalServerError,
 			ErrorMsg: "Unexpected error",
 		})
 	}
-
+	statusCode = http.StatusOK
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
 	})
