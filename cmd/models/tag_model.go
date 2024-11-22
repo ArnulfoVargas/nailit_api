@@ -207,12 +207,12 @@ func (t *Tag) DeleteAllTagsFromUserId(db *sql.DB) (error) {
     return err
 }
 
-func (t *Tag) GetAllTagsFromUserId(db *sql.DB) ([]Tag, error) {
+func (t *Tag) GetAllTagsFromUserId(db *sql.DB) ([]map[string]any, error) {
     if active, err := t.CheckUserIsActive(db); !active || err != nil {
         return nil, errors.New("couldnt get")
     }
 
-    stm, err := db.Prepare("SELECT title, color FROM tags WHERE created_by = ? AND status = 1;")
+    stm, err := db.Prepare("SELECT id_tag, title, color FROM tags WHERE created_by = ? AND status = 1;")
     if err != nil {
         return nil, errors.New("couldnt get")
     }
@@ -226,14 +226,20 @@ func (t *Tag) GetAllTagsFromUserId(db *sql.DB) ([]Tag, error) {
         return nil, err
     }
 
-    tags := make([]Tag, 0)
+    tags := make([]map[string]any, 0)
 
     for rows.Next() {
-        t := Tag{ CreatedBy: t.CreatedBy }
+        tag := Tag{ CreatedBy: t.CreatedBy}
+        var id int64 = 0;
 
-        err = rows.Scan(&t.Title, &t.Color)
+        err = rows.Scan(&id, &tag.Title, &tag.Color)
 
-        tags = append(tags, t)
+        tags = append(tags, map[string]any{
+            "id" : id,
+            "title": tag.Title,
+            "color": tag.Color,
+            "created_by" : tag.CreatedBy,
+        })
 
         if err != nil {
             err = errors.New("internal server error")
