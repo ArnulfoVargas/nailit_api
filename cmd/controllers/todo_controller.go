@@ -3,6 +3,7 @@ package controllers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -21,7 +22,7 @@ func NewToDoController(db *sql.DB) *ToDoController {
 	}
 }
 
-func ReadToDoFromJson(todo *models.ToDo, body []byte) (error) {
+func ReadToDoFromJson(todo *models.ToDo, body []byte) error {
 	holder := make(map[string]any)
 	err := utilities.ReadJson(body, &holder)
 	errDefinition := errors.New("invalid definition")
@@ -36,11 +37,10 @@ func ReadToDoFromJson(todo *models.ToDo, body []byte) (error) {
 	desc, ok4 := holder["description"].(string)
 	title, ok5 := holder["title"].(string)
 	tag, ok6 := holder["tag"].(int64)
-	
 
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 {
-		return errDefinition
-	} 
+		return fmt.Errorf("error format unix: %t, color: %t, user: %t, desc: %t, title: %t, tag: %t", ok1, ok2, ok3, ok4, ok5, ok6)
+	}
 
 	todo.Deadline = time.UnixMilli(unix)
 	todo.Color = color
@@ -55,7 +55,7 @@ func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 	todo := models.ToDo{}
 	code := http.StatusInternalServerError
 
-	defer func ()  {
+	defer func() {
 		c.Status(code)
 	}()
 
@@ -64,7 +64,7 @@ func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 	if err != nil {
 		code = http.StatusBadRequest
 		return c.JSON(models.Response{
-			Status: code,
+			Status:   code,
 			ErrorMsg: err.Error(),
 		})
 	}
@@ -74,7 +74,7 @@ func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 	if err != nil {
 		code = http.StatusConflict
 		return c.JSON(models.Response{
-			Status: code,
+			Status:   code,
 			ErrorMsg: err.Error(),
 		})
 	}
@@ -83,7 +83,7 @@ func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 	return c.JSON(models.Response{
 		Status: code,
 		Body: fiber.Map{
-			"id": id,
+			"id":  id,
 			"tag": todo,
 		},
 	})
@@ -98,22 +98,22 @@ func (t *ToDoController) CreateUpdateOrDeleteFuncs(delete bool) func(*fiber.Ctx)
 			c.Status(code)
 		}()
 
-		id, err := c.ParamsInt("id") 
+		id, err := c.ParamsInt("id")
 
 		if err != nil {
 			code = http.StatusBadRequest
 			return c.JSON(models.Response{
-				Status: code,
+				Status:   code,
 				ErrorMsg: "invalid to do id",
 			})
 		}
 
-		err = ReadToDoFromJson(&todo, c.Body()) 
+		err = ReadToDoFromJson(&todo, c.Body())
 
 		if err != nil {
 			code = http.StatusBadRequest
 			return c.JSON(models.Response{
-				Status: code,
+				Status:   code,
 				ErrorMsg: "invalid to do definition",
 			})
 		}
@@ -123,7 +123,7 @@ func (t *ToDoController) CreateUpdateOrDeleteFuncs(delete bool) func(*fiber.Ctx)
 		if err != nil {
 			code = http.StatusInternalServerError
 			return c.JSON(models.Response{
-				Status: code,
+				Status:   code,
 				ErrorMsg: err.Error(),
 			})
 		}
@@ -131,7 +131,7 @@ func (t *ToDoController) CreateUpdateOrDeleteFuncs(delete bool) func(*fiber.Ctx)
 		code = http.StatusOK
 		return c.JSON(models.Response{
 			Status: code,
-			Body: todo,
+			Body:   todo,
 		})
 	}
 }
@@ -143,12 +143,12 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 		c.Status(code)
 	}()
 
-	id, err := c.ParamsInt("id") 
+	id, err := c.ParamsInt("id")
 
 	if err != nil {
 		code = http.StatusBadRequest
 		return c.JSON(models.Response{
-			Status: code,
+			Status:   code,
 			ErrorMsg: "invalid user id",
 		})
 	}
@@ -162,20 +162,20 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 	if err != nil {
 		code = http.StatusInternalServerError
 		return c.JSON(models.Response{
-			Status: code,
+			Status:   code,
 			ErrorMsg: err.Error(),
 		})
 	}
 
 	orderedTodos := make(map[any][]map[string]any)
 
-	for _, to := range(todos) {
+	for _, to := range todos {
 		id, ok := to["id"]
 
 		if !ok {
 			code = http.StatusInternalServerError
 			return c.JSON(models.Response{
-				Status: code,
+				Status:   code,
 				ErrorMsg: "internal server error",
 			})
 		}
@@ -183,27 +183,27 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 		orderedTodos[id] = append(orderedTodos[id], to)
 	}
 
-	orderedTodos[0] = todos;
+	orderedTodos[0] = todos
 
 	code = http.StatusOK
 	return c.JSON(models.Response{
 		Status: code,
-		Body: orderedTodos,
+		Body:   orderedTodos,
 	})
 }
 
 func (t *ToDoController) DeleteAllToDosFromUserId(c *fiber.Ctx) error {
-	id, err := c.ParamsInt("id") 
+	id, err := c.ParamsInt("id")
 	code := http.StatusInternalServerError
 
-	defer func ()  {
+	defer func() {
 		c.Status(code)
 	}()
 
 	if err != nil {
 		code = http.StatusBadRequest
 		return c.JSON(models.Response{
-			Status: code,
+			Status:   code,
 			ErrorMsg: "invalid user id",
 		})
 	}
@@ -217,7 +217,7 @@ func (t *ToDoController) DeleteAllToDosFromUserId(c *fiber.Ctx) error {
 	if err != nil {
 		code = http.StatusInternalServerError
 		return c.JSON(models.Response{
-			Status: code,
+			Status:   code,
 			ErrorMsg: err.Error(),
 		})
 	}
@@ -225,6 +225,6 @@ func (t *ToDoController) DeleteAllToDosFromUserId(c *fiber.Ctx) error {
 	code = http.StatusOK
 	return c.JSON(models.Response{
 		Status: code,
-		Body: "deleted all todos",
+		Body:   "deleted all todos",
 	})
 }
