@@ -163,6 +163,7 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
     stm, err := db.Prepare(query)
 
     if err != nil {
+        errorMsg := "test 1"
         return errors.New(errorMsg)
     }
 
@@ -172,6 +173,7 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
         _, err = stm.Exec(id, t.CreatedBy)
 
         if err != nil {
+            errorMsg := "test 2"
             return errors.New(errorMsg)
         }
     } else {
@@ -179,6 +181,7 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
         affected, err := res.RowsAffected()
 
         if affected != 1 || err != nil {
+            errorMsg := "test 3"
             return errors.New(errorMsg)
         }
     }
