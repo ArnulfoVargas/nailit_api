@@ -39,7 +39,7 @@ func ReadToDoFromJson(todo *models.ToDo, body []byte) error {
 	tag, ok6 := holder["tag"].(int64)
 
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 {
-		return fmt.Errorf("error format unix: %t, color: %t, user: %t, desc: %t, title: %t, tag: %t", ok1, ok2, ok3, ok4, ok5, ok6)
+		return fmt.Errorf("error format unix: %t, color: %t, user: %t, desc: %t, title: %t, tag: %t \n%-v", ok1, ok2, ok3, ok4, ok5, ok6, holder)
 	}
 
 	todo.Deadline = time.UnixMilli(unix)
