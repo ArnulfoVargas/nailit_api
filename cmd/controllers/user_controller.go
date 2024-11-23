@@ -280,7 +280,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
+			ErrorMsg: "Invalid input fields",
 		})
 	}
 
@@ -289,7 +289,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status: http.StatusConflict,
-			ErrorMsg: "Unexpected error",
+			ErrorMsg: "Error while validating fields",
 		})
 	}
 
