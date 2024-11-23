@@ -51,7 +51,6 @@ func (t *TagsController) CreateTag(c *fiber.Ctx) error {
 
 	return c.JSON(models.Response{
 		Status: code,
-		ErrorMsg: err.Error(),
 		Body: fiber.Map{
 			"id": id,
 			"tag": tag,
