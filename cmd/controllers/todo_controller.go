@@ -83,7 +83,7 @@ func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 		Status: code,
 		Body: fiber.Map{
 			"id":  id,
-			"tag": todo,
+			"todo": todo,
 		},
 	})
 }
