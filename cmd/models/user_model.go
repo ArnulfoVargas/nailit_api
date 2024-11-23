@@ -241,7 +241,12 @@ func (u UserDTO) DeleteUser(id int, db *sql.DB) error {
 		CreatedBy: int64(id),
 	}
 
+	todo := ToDo{
+		CreatedBy: int64(id),
+	}
+
 	go tag.DeleteAllTagsFromUserId(db)
+	go todo.DeleteAllToDosFromUserId(db)
 
 	return nil
 }

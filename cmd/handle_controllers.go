@@ -14,6 +14,7 @@ func (server *Server) handleControllers() {
 
 	server.mapUserRoutes()
 	server.mapTagsRoutes()
+	server.mapToDosRoutes()
 }
 
 func (server *Server) mapUserRoutes() {
@@ -42,4 +43,16 @@ func (server *Server) mapTagsRoutes() {
 	tagsGroup.Put("/update/:id", tagsController.CreateUpdateOrDeleteFuncs(false))
 	tagsGroup.Delete("/delete/:id", tagsController.CreateUpdateOrDeleteFuncs(true))
 	tagsGroup.Delete("/delete/user/:id", tagsController.DeleteAllTagsFromUserId)
+}
+
+func (server *Server) mapToDosRoutes() {
+	toDosController := controllers.NewToDoController(server.db)
+
+	toDosGroup := server.app.Group("/todos")
+
+	toDosGroup.Post("/create", toDosController.CreateToDo)
+	toDosGroup.Get("/user/:id", toDosController.GetAllToDosFromUserId)
+	toDosGroup.Put("/update/:id", toDosController.CreateUpdateOrDeleteFuncs(false))
+	toDosGroup.Delete("/delete/:id", toDosController.CreateUpdateOrDeleteFuncs(true))
+	toDosGroup.Delete("/delete/user/:id", toDosController.DeleteAllToDosFromUserId)
 }

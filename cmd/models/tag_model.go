@@ -95,7 +95,7 @@ func (t *Tag) GetTagById(id int, db *sql.DB) error {
 }
 
 func (t *Tag) InsertTag(db *sql.DB) (int64, error) {
-    maxTagsCount := 20
+    maxTagsCount := 10
 
     var err error
 
@@ -108,7 +108,7 @@ func (t *Tag) InsertTag(db *sql.DB) (int64, error) {
             return -1, errors.New("invalid user")
         }
 
-        maxTagsCount = 40
+        maxTagsCount = 20
     }
 
     count, err := t.CountTagsPerUserId(db)
@@ -176,6 +176,13 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
         if err != nil {
             return errors.New(errorMsg)
         }
+
+        to := ToDo{
+            CreatedBy: t.CreatedBy,
+            Tag: id,
+        }
+
+        go to.DeleteAllToDosFromTagId(db)
     } else {
         res, _ := stm.Exec(t.Title, t.Color, id, t.CreatedBy)
         affected, err := res.RowsAffected()
