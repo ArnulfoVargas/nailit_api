@@ -289,7 +289,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status:   http.StatusConflict,
-			ErrorMsg: err.Error(),
+			ErrorMsg: "Error validating user data",
 		})
 	}
 
