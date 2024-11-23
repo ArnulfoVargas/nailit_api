@@ -32,30 +32,30 @@ func ReadToDoFromJson(todo *models.ToDo, body []byte) error {
 		return errDefinition
 	}
 
-	unix, ok1 := holder["deadline"].(int64)
-	color, ok2 := holder["color"].(uint)
-	userId, ok3 := holder["created_by"].(int64)
+	unix, ok1 := holder["deadline"].(float64)
+	color, ok2 := holder["color"].(float64)
+	userId, ok3 := holder["created_by"].(float64)
 	desc, ok4 := holder["description"].(string)
 	title, ok5 := holder["title"].(string)
-	tag, ok6 := holder["tag"].(int64)
+	tag, ok6 := holder["tag"].(float64)
 
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 {
 		return fmt.Errorf(
-			"error deadline: %-v color: %-v createdby: %-v tag: %-v", 
-			reflect.TypeOf(holder["deadline"]), 
-			reflect.TypeOf(holder["color"]), 
-			reflect.TypeOf(holder["created_by"]), 
+			"error deadline: %-v color: %-v createdby: %-v tag: %-v",
+			reflect.TypeOf(holder["deadline"]),
+			reflect.TypeOf(holder["color"]),
+			reflect.TypeOf(holder["created_by"]),
 			reflect.TypeOf(holder["tag"]),
 		)
 	}
 
-	todo.Deadline = time.UnixMilli(unix)
-	todo.Color = color
-	todo.CreatedBy = userId
+	todo.Deadline = time.UnixMilli(int64(unix))
+	todo.Color = uint(color)
+	todo.CreatedBy = int64(userId)
 	todo.Description = desc
 	todo.Title = title
-	todo.Tag = tag
-	return nil
+	todo.Tag = int64(tag)
+	return fmt.Errorf("%-v", todo)
 }
 
 func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
