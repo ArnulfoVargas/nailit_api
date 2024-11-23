@@ -40,7 +40,7 @@ func ReadToDoFromJson(todo *models.ToDo, body []byte) error {
 	tag, ok6 := holder["tag"].(int64)
 
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 {
-		return fmt.Errorf("error %-v", reflect.TypeOf(holder["deadline"]))
+		return fmt.Errorf("error %-v %-v %-v %-v", reflect.TypeOf(holder["deadline"]), reflect.TypeOf(holder["color"]), reflect.TypeOf(holder["created_by"]), reflect.TypeOf(holder["tag"]))
 	}
 
 	todo.Deadline = time.UnixMilli(unix)
