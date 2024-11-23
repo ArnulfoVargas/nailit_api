@@ -3,9 +3,7 @@ package controllers
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/ArnulfoVargas/nailit_api.git/cmd/models"
