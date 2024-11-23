@@ -88,7 +88,7 @@ func (u UserDTO)VerifyUserIdIsActive(id int, db *sql.DB) (bool, error) {
 
 	err = row.Scan(&count)
 
-	return count == 1, errors.New("invalid user")
+	return count == 1, err
 }
 
 func (u UserDTO) CountUsersByMail(mail string, db *sql.DB) (int, error) {
