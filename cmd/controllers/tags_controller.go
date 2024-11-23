@@ -45,10 +45,9 @@ func (t *TagsController) CreateTag(c *fiber.Ctx) error {
 			Status: code,
 			ErrorMsg: err.Error(),
 		})
-	} else {
-		code = http.StatusOK
 	}
 
+	code = http.StatusCreated
 	return c.JSON(models.Response{
 		Status: code,
 		Body: fiber.Map{
