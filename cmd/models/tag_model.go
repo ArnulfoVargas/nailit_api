@@ -8,7 +8,7 @@ import (
 
 type Tag struct {
 	Title     string `json:"title"`
-	Color     uint  `json:"color"`
+	Color     uint   `json:"color"`
 	CreatedBy int64  `json:"created_by"`
 }
 
@@ -18,237 +18,237 @@ func (t *Tag) ValidateTag() (bool, error) {
 }
 
 func (t *Tag) CheckUserIsActive(db *sql.DB) (bool, error) {
-    userDto := UserDTO{}
+	userDto := UserDTO{}
 
-    return userDto.VerifyUserIdIsActive(int(t.CreatedBy), db)
+	return userDto.VerifyUserIdIsActive(int(t.CreatedBy), db)
 }
 
 func (t *Tag) VerifyUserIsPremium(db *sql.DB) (bool, error) {
-    u := UserDTO{}
-    err := u.VerifyUserIsPremium(int(t.CreatedBy), db)
- 
-    if err != nil {
-        return false, err
-    }
+	u := UserDTO{}
+	err := u.VerifyUserIsPremium(int(t.CreatedBy), db)
 
-    return u.UserType == 1, err
+	if err != nil {
+		return false, err
+	}
+
+	return u.UserType == 1, err
 }
 
 func (t *Tag) TagExists(id int64, db *sql.DB) (bool, error) {
-    stm, err := db.Prepare("SELECT COUNT(*) FROM tags WHERE id_tag = ? AND status = 1 LIMIT 1");
-    notExists := errors.New("tag not exists")
+	stm, err := db.Prepare("SELECT COUNT(*) FROM tags WHERE id_tag = ? AND status = 1 LIMIT 1")
+	notExists := errors.New("tag not exists")
 
-    if err != nil {
-        return false, notExists
-    }
-    defer stm.Close()
+	if err != nil {
+		return false, notExists
+	}
+	defer stm.Close()
 
-    holder := -1
-    row := stm.QueryRow(id)
+	holder := -1
+	row := stm.QueryRow(id)
 
-    err = row.Scan(&holder)
+	err = row.Scan(&holder)
 
-    if err != nil {
-        return false, notExists
-    }
+	if err != nil {
+		return false, notExists
+	}
 
-    return holder > 0, nil
+	return holder > 0, nil
 }
 
 func (t *Tag) CountTagsPerUserId(db *sql.DB) (int, error) {
-    stm, err := db.Prepare("SELECT COUNT(*) AS count FROM tags WHERE created_by = ? AND status = 1 LIMIT 1;");
+	stm, err := db.Prepare("SELECT COUNT(*) AS count FROM tags WHERE created_by = ? AND status = 1 LIMIT 1;")
 
-    if err != nil {
-        return -1, err
-    }
-    defer stm.Close()
+	if err != nil {
+		return -1, err
+	}
+	defer stm.Close()
 
-    count := -1;
-    row := stm.QueryRow(t.CreatedBy);
-    err = row.Scan(&count);
+	count := -1
+	row := stm.QueryRow(t.CreatedBy)
+	err = row.Scan(&count)
 
-    return count, err;
+	return count, err
 }
 
 func (t *Tag) GetTagById(id int, db *sql.DB) error {
-    stm, err := db.Prepare("SELECT title, color, created_by FROM tags WHERE id_tag = ? AND status = 1 LIMIT 1");
+	stm, err := db.Prepare("SELECT title, color, created_by FROM tags WHERE id_tag = ? AND status = 1 LIMIT 1")
 
-    if err != nil {
-        return errors.New("couldnt get")
-    }
-    defer stm.Close()
+	if err != nil {
+		return errors.New("couldnt get")
+	}
+	defer stm.Close()
 
-    holder := Tag{}
-    row := stm.QueryRow(id)
+	holder := Tag{}
+	row := stm.QueryRow(id)
 
-    err = row.Scan(&holder)
+	err = row.Scan(&holder)
 
-    if err != nil {
-        return errors.New("invalid id")
-    }
+	if err != nil {
+		return errors.New("invalid id")
+	}
 
-    t.Color = holder.Color
-    t.CreatedBy = holder.CreatedBy
-    t.Title = holder.Title
+	t.Color = holder.Color
+	t.CreatedBy = holder.CreatedBy
+	t.Title = holder.Title
 
-    return nil
+	return nil
 }
 
 func (t *Tag) InsertTag(db *sql.DB) (int64, error) {
-    maxTagsCount := 20
+	maxTagsCount := 20
 
-    var err error
+	var err error
 
-    if active, err := t.CheckUserIsActive(db) ; !active || err != nil {
-        return -1, errors.New("invalid user")
-    }
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return -1, errors.New("invalid user")
+	}
 
-    if premium, err := t.VerifyUserIsPremium(db) ; premium {
-        if err != nil {
-            return -1, errors.New("invalid user")
-        }
+	if premium, err := t.VerifyUserIsPremium(db); premium {
+		if err != nil {
+			return -1, errors.New("invalid user")
+		}
 
-        maxTagsCount = 40
-    }
+		maxTagsCount = 40
+	}
 
-    count, err := t.CountTagsPerUserId(db)
+	count, err := t.CountTagsPerUserId(db)
 
-    if err != nil {
-        return -1, errors.New("invalid user")
-    }
+	if err != nil {
+		return -1, errors.New("invalid user")
+	}
 
-    if count >= maxTagsCount {
-        return -1, errors.New("tags limit exceeded")
-    }
+	if count >= maxTagsCount {
+		return -1, errors.New("tags limit exceeded")
+	}
 
-    stm, err := db.Prepare("INSERT INTO tags (title, color, created_by) VALUES ( ? , ? , ? ) LIMIT 1;")
+	stm, err := db.Prepare("INSERT INTO tags (title, color, created_by) VALUES ( ? , ? , ? ) LIMIT 1;")
 
-    if err != nil {
-        return -1, errors.New("unexpected Error")
-    }
+	if err != nil {
+		return -1, errors.New("unexpected Error")
+	}
 
-    res, err := stm.Exec(t.Title, t.Color, t.CreatedBy)
+	res, err := stm.Exec(t.Title, t.Color, t.CreatedBy)
 
-    if err != nil {
-        return -1, errors.New("unexpected error")
-    }
+	if err != nil {
+		return -1, errors.New("unexpected error")
+	}
 
-    insertId, err := res.LastInsertId()
+	insertId, err := res.LastInsertId()
 
-    if err != nil {
-        return -1, errors.New("unexpected error")
-    }
+	if err != nil {
+		return -1, errors.New("unexpected error")
+	}
 
-    return insertId, nil
+	return insertId, nil
 }
 
-func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return errors.New("invalid user")
-    }
+func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) error {
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return errors.New("invalid user")
+	}
 
-    if exists, err := t.TagExists(id, db); !exists || err != nil {
-        return errors.New("tag not found")
-    }
+	if exists, err := t.TagExists(id, db); !exists || err != nil {
+		return errors.New("tag not found")
+	}
 
-    var query string
-    var errorMsg string
+	var query string
+	var errorMsg string
 
-    if delete {
-        query = "UPDATE TABLE tags SET status = 0, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
-    } else {
-        query = "UPDATE TABLE tags SET title = ?, color = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
-    }
-    
-    stm, err := db.Prepare(query)
+	if delete {
+		query = "UPDATE TABLE tags SET status = 0, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;"
+	} else {
+		query = "UPDATE TABLE tags SET title = ?, color = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;"
+	}
 
-    if err != nil {
-        errorMsg := "test 1"
-        return errors.New(errorMsg)
-    }
+	stm, err := db.Prepare(query)
 
-    defer stm.Close()
+	if err != nil {
+		errorMsg = "test 1"
+		return errors.New(errorMsg)
+	}
 
-    if delete {
-        _, err = stm.Exec(id, t.CreatedBy)
+	defer stm.Close()
 
-        if err != nil {
-            errorMsg := "test 2"
-            return errors.New(errorMsg)
-        }
-    } else {
-        res, _ := stm.Exec(t.Title, t.Color, id, t.CreatedBy)
-        affected, err := res.RowsAffected()
+	if delete {
+		_, err = stm.Exec(id, t.CreatedBy)
 
-        if affected != 1 || err != nil {
-            errorMsg := "test 3"
-            return errors.New(errorMsg)
-        }
-    }
+		if err != nil {
+			errorMsg = "test 2"
+			return errors.New(errorMsg)
+		}
+	} else {
+		res, _ := stm.Exec(t.Title, t.Color, id, t.CreatedBy)
+		affected, err := res.RowsAffected()
 
-    return nil
+		if affected != 1 || err != nil {
+			errorMsg = "test 3"
+			return errors.New(errorMsg)
+		}
+	}
+
+	return nil
 }
 
-func (t *Tag) DeleteAllTagsFromUserId(db *sql.DB) (error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return errors.New("invalid user")
-    }
+func (t *Tag) DeleteAllTagsFromUserId(db *sql.DB) error {
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return errors.New("invalid user")
+	}
 
-    stm, err := db.Prepare("UPDATE tags SET status = 0 WHERE created_by = ? AND status = 1;")
-    if err != nil {
-        return errors.New("error deleting")
-    }
+	stm, err := db.Prepare("UPDATE tags SET status = 0 WHERE created_by = ? AND status = 1;")
+	if err != nil {
+		return errors.New("error deleting")
+	}
 
-    defer stm.Close()
+	defer stm.Close()
 
-    _, err = stm.Exec()
+	_, err = stm.Exec()
 
-    if err != nil {
-        err = errors.New("error deleting")
-    }
+	if err != nil {
+		err = errors.New("error deleting")
+	}
 
-    return err
+	return err
 }
 
 func (t *Tag) GetAllTagsFromUserId(db *sql.DB) ([]map[string]any, error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return nil, errors.New("couldnt get")
-    }
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return nil, errors.New("couldnt get")
+	}
 
-    stm, err := db.Prepare("SELECT id_tag, title, color FROM tags WHERE created_by = ? AND status = 1;")
-    if err != nil {
-        return nil, errors.New("couldnt get")
-    }
+	stm, err := db.Prepare("SELECT id_tag, title, color FROM tags WHERE created_by = ? AND status = 1;")
+	if err != nil {
+		return nil, errors.New("couldnt get")
+	}
 
-    defer stm.Close()
+	defer stm.Close()
 
-    rows, err := stm.Query(t.CreatedBy)
+	rows, err := stm.Query(t.CreatedBy)
 
-    if err != nil {
-        err = errors.New("internal server error")
-        return nil, err
-    }
+	if err != nil {
+		err = errors.New("internal server error")
+		return nil, err
+	}
 
-    tags := make([]map[string]any, 0)
+	tags := make([]map[string]any, 0)
 
-    for rows.Next() {
-        tag := Tag{ CreatedBy: t.CreatedBy}
-        var id int64 = 0;
+	for rows.Next() {
+		tag := Tag{CreatedBy: t.CreatedBy}
+		var id int64 = 0
 
-        err = rows.Scan(&id, &tag.Title, &tag.Color)
+		err = rows.Scan(&id, &tag.Title, &tag.Color)
 
-        tags = append(tags, map[string]any{
-            "id" : id,
-            "title": tag.Title,
-            "color": tag.Color,
-            "created_by" : tag.CreatedBy,
-        })
+		tags = append(tags, map[string]any{
+			"id":         id,
+			"title":      tag.Title,
+			"color":      tag.Color,
+			"created_by": tag.CreatedBy,
+		})
 
-        if err != nil {
-            err = errors.New("internal server error")
-            return nil, err
-        }
-    }
+		if err != nil {
+			err = errors.New("internal server error")
+			return nil, err
+		}
+	}
 
-    return tags, nil
+	return tags, nil
 }
