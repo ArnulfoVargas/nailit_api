@@ -155,9 +155,9 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
     var errorMsg string
 
     if delete {
-        query = "UPDATE TABLE tags SET status = 0, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
+        query = "UPDATE tags SET status = 0, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
     } else {
-        query = "UPDATE TABLE tags SET title = ?, color = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
+        query = "UPDATE tags SET title = ?, color = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
     }
     
     stm, err := db.Prepare(query)
