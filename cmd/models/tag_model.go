@@ -155,16 +155,17 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
     var errorMsg string
 
     if delete {
+        errorMsg = "Couldnt delete tag"
         query = "UPDATE tags SET status = 0, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
     } else {
+        errorMsg = "Coundnt update tag"
         query = "UPDATE tags SET title = ?, color = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
     }
     
     stm, err := db.Prepare(query)
 
     if err != nil {
-        errorMsg = "test 1"
-        return err
+        return errors.New(errorMsg)
     }
 
     defer stm.Close()
@@ -173,7 +174,6 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
         _, err = stm.Exec(id, t.CreatedBy)
 
         if err != nil {
-            errorMsg = "test 2"
             return errors.New(errorMsg)
         }
     } else {
@@ -181,7 +181,6 @@ func (t *Tag) UpdateTagById(id int64, delete bool, db *sql.DB) (error) {
         affected, err := res.RowsAffected()
 
         if affected != 1 || err != nil {
-            errorMsg = "test 3"
             return errors.New(errorMsg)
         }
     }

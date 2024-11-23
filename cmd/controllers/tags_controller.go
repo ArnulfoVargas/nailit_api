@@ -152,7 +152,7 @@ func (t *TagsController) GetAllTagsFromUserId(c *fiber.Ctx) error {
 		code = http.StatusBadRequest
 		return c.JSON(models.Response{
 			Status: code,
-			ErrorMsg: "invalid tag id",
+			ErrorMsg: "invalid user id",
 		})
 	}
 
