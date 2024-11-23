@@ -176,3 +176,40 @@ func (t *TagsController) GetAllTagsFromUserId(c *fiber.Ctx) error {
 		Body: tags,
 	})
 }
+
+func (t *TagsController) DeleteAllTagsFromUserId(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id") 
+	code := http.StatusInternalServerError
+
+	defer func ()  {
+		c.Status(code)
+	}()
+
+	if err != nil {
+		code = http.StatusBadRequest
+		return c.JSON(models.Response{
+			Status: code,
+			ErrorMsg: "invalid user id",
+		})
+	}
+
+	tag := models.Tag{
+		CreatedBy: int64(id),
+	}
+
+	err = tag.DeleteAllTagsFromUserId(t.db)
+
+	if err != nil {
+		code = http.StatusInternalServerError
+		return c.JSON(models.Response{
+			Status: code,
+			ErrorMsg: err.Error(),
+		})
+	}
+
+	code = http.StatusOK
+	return c.JSON(models.Response{
+		Status: code,
+		Body: "deleted all tags",
+	})
+}

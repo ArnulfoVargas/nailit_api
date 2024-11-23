@@ -41,4 +41,5 @@ func (server *Server) mapTagsRoutes() {
 	tagsGroup.Get("/user/:id", tagsController.GetAllTagsFromUserId)
 	tagsGroup.Put("/update/:id", tagsController.CreateUpdateOrDeleteFuncs(false))
 	tagsGroup.Delete("/delete/:id", tagsController.CreateUpdateOrDeleteFuncs(true))
+	tagsGroup.Delete("/delete/user/:id", tagsController.DeleteAllTagsFromUserId)
 }
