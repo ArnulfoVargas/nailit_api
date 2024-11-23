@@ -105,23 +105,23 @@ func (t *ToDo) InsertToDo(db *sql.DB) (int64, error) {
 		return -1, errors.New("to dos limit exceeded")
 	}
 
-	var query = "INSERT INTO todos (title, description, color, deadline, tag, created_by) VALUES ( ?, ?, ?, ?, ?, ?)"
+	var query = "INSERT INTO todos (title, description, color, deadline, tag, created_by) VALUES ( ?, ?, ?, ?, ?, ?);"
 	stm, err := db.Prepare(query)
 
 	if err != nil {
-		return -1, errors.New("unexpected error")
+		return -1, err
 	}
 
 	res, err := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, t.CreatedBy)
 
 	if err != nil {
-		return -1, errors.New("unexpected error")
+		return -1, err
 	}
 
 	insertId, err := res.LastInsertId()
 
 	if err != nil {
-		return -1, errors.New("unexpected error")
+		return -1, err
 	}
 
 	return insertId, nil
