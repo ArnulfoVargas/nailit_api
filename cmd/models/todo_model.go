@@ -8,21 +8,21 @@ import (
 )
 
 type ToDo struct {
-	Title       	string 			`json:"title"`
-	Description 	string 			`json:"description"`
-	Color       	uint   			`json:"color"`
-	Deadline    	time.Time   	`json:"deadline"`
-	Tag    			int64			`json:"tag"`
-	CreatedBy 		int64 			`json:"created_by"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Color       uint      `json:"color"`
+	Deadline    time.Time `json:"deadline"`
+	Tag         int64     `json:"tag"`
+	CreatedBy   int64     `json:"created_by"`
 }
 
 func (t *ToDo) ValidateTitle() (bool, error) {
-	regex := "^[A-Za-z ]{3,15}$"	
+	regex := "^[A-Za-z ]{3,15}$"
 	return regexp.Match(regex, []byte(t.Title))
 }
 
 func (t *ToDo) ValidateDescription() (bool, error) {
-	regex := "^[A-Za-z0-9 ]{0,100}$"	
+	regex := "^[A-Za-z0-9 ]{0,100}$"
 	return regexp.Match(regex, []byte(t.Description))
 }
 
@@ -64,7 +64,7 @@ func (t *ToDo) ToDoExists(id int64, db *sql.DB) (bool, error) {
 }
 
 func (t *ToDo) CountToDosPerUserId(db *sql.DB) (int, error) {
-	stm, err := db.Prepare("SELECT COUNT(*) AS count FROM todos WHERE created_by = ? AND status = ? LIMIT 1;")
+	stm, err := db.Prepare("SELECT COUNT(*) AS count FROM todos WHERE created_by = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return -1, errors.New("internal server error")
@@ -98,7 +98,7 @@ func (t *ToDo) InsertToDo(db *sql.DB) (int64, error) {
 	count, err := t.CountToDosPerUserId(db)
 
 	if err != nil {
-		return -1, errors.New("internal server error")
+		return -1, err
 	}
 
 	if count >= maxTodoCount {
@@ -127,138 +127,138 @@ func (t *ToDo) InsertToDo(db *sql.DB) (int64, error) {
 	return insertId, nil
 }
 
-func (t *ToDo) UpdateToDoById(id int64, delete bool, db *sql.DB) (error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return errors.New("invalid user")
-    }
+func (t *ToDo) UpdateToDoById(id int64, delete bool, db *sql.DB) error {
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return errors.New("invalid user")
+	}
 
-    if exists, err := t.ToDoExists(id, db); !exists || err != nil {
-        return errors.New("to do not found")
-    }
+	if exists, err := t.ToDoExists(id, db); !exists || err != nil {
+		return errors.New("to do not found")
+	}
 
-    var query string
-    var errorMsg string
+	var query string
+	var errorMsg string
 
-    if delete {
-        errorMsg = "Couldnt delete to do"
-        query = "UPDATE todos SET status = 0, updated_at = now() WHERE id_todo = ? AND created_by = ? LIMIT 1;";
-    } else {
-        errorMsg = "Coundnt update todo"
-        query = "UPDATE todos SET title = ?, description = ?, color = ?, deadline = ?, tag = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;";
-    }
-    
-    stm, err := db.Prepare(query)
+	if delete {
+		errorMsg = "Couldnt delete to do"
+		query = "UPDATE todos SET status = 0, updated_at = now() WHERE id_todo = ? AND created_by = ? LIMIT 1;"
+	} else {
+		errorMsg = "Coundnt update todo"
+		query = "UPDATE todos SET title = ?, description = ?, color = ?, deadline = ?, tag = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;"
+	}
 
-    if err != nil {
-        return errors.New(errorMsg)
-    }
+	stm, err := db.Prepare(query)
 
-    defer stm.Close()
+	if err != nil {
+		return errors.New(errorMsg)
+	}
 
-    if delete {
-        _, err = stm.Exec(id, t.CreatedBy)
+	defer stm.Close()
 
-        if err != nil {
-            return errors.New(errorMsg)
-        }
-    } else {
-        res, _ := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, id, t.CreatedBy)
-        affected, err := res.RowsAffected()
+	if delete {
+		_, err = stm.Exec(id, t.CreatedBy)
 
-        if affected != 1 || err != nil {
-            return errors.New(errorMsg)
-        }
-    }
+		if err != nil {
+			return errors.New(errorMsg)
+		}
+	} else {
+		res, _ := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, id, t.CreatedBy)
+		affected, err := res.RowsAffected()
 
-    return nil
+		if affected != 1 || err != nil {
+			return errors.New(errorMsg)
+		}
+	}
+
+	return nil
 }
 
-func (t *ToDo) DeleteAllToDosFromUserId(db *sql.DB) (error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return errors.New("invalid user")
-    }
+func (t *ToDo) DeleteAllToDosFromUserId(db *sql.DB) error {
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return errors.New("invalid user")
+	}
 
-    stm, err := db.Prepare("UPDATE todos SET status = 0 WHERE created_by = ? AND status = 1;")
-    if err != nil {
-        return errors.New("error deleting")
-    }
+	stm, err := db.Prepare("UPDATE todos SET status = 0 WHERE created_by = ? AND status = 1;")
+	if err != nil {
+		return errors.New("error deleting")
+	}
 
-    defer stm.Close()
+	defer stm.Close()
 
-    _, err = stm.Exec(t.CreatedBy)
+	_, err = stm.Exec(t.CreatedBy)
 
-    if err != nil {
-        err = errors.New("error deleting")
-    }
+	if err != nil {
+		err = errors.New("error deleting")
+	}
 
-    return err
+	return err
 }
 
-func (t *ToDo) DeleteAllToDosFromTagId(db *sql.DB) (error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return errors.New("invalid user")
-    }
+func (t *ToDo) DeleteAllToDosFromTagId(db *sql.DB) error {
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return errors.New("invalid user")
+	}
 
-    stm, err := db.Prepare("UPDATE todos SET status = 0 WHERE created_by = ? AND tag = ? AND status = 1;")
-    if err != nil {
-        return errors.New("error deleting")
-    }
+	stm, err := db.Prepare("UPDATE todos SET status = 0 WHERE created_by = ? AND tag = ? AND status = 1;")
+	if err != nil {
+		return errors.New("error deleting")
+	}
 
-    defer stm.Close()
+	defer stm.Close()
 
-    _, err = stm.Exec(t.CreatedBy, t.Tag)
+	_, err = stm.Exec(t.CreatedBy, t.Tag)
 
-    if err != nil {
-        err = errors.New("error deleting")
-    }
+	if err != nil {
+		err = errors.New("error deleting")
+	}
 
-    return err
+	return err
 }
 
 func (t *ToDo) GetAllToDosFromUserId(db *sql.DB) ([]map[string]any, error) {
-    if active, err := t.CheckUserIsActive(db); !active || err != nil {
-        return nil, errors.New("couldnt get")
-    }
+	if active, err := t.CheckUserIsActive(db); !active || err != nil {
+		return nil, errors.New("couldnt get")
+	}
 
-    stm, err := db.Prepare("SELECT id_todo, title, description, color, deadline, tag, created_by FROM todos WHERE created_by = ? AND status = 1 ORDER BY deadline ASC;")
-    if err != nil {
-        return nil, errors.New("couldnt get")
-    }
+	stm, err := db.Prepare("SELECT id_todo, title, description, color, deadline, tag, created_by FROM todos WHERE created_by = ? AND status = 1 ORDER BY deadline ASC;")
+	if err != nil {
+		return nil, errors.New("couldnt get")
+	}
 
-    defer stm.Close()
+	defer stm.Close()
 
-    rows, err := stm.Query(t.CreatedBy)
+	rows, err := stm.Query(t.CreatedBy)
 
-    if err != nil {
-        err = errors.New("internal server error")
-        return nil, err
-    }
+	if err != nil {
+		err = errors.New("internal server error")
+		return nil, err
+	}
 
-    todos := make([]map[string]any, 0)
+	todos := make([]map[string]any, 0)
 
-    for rows.Next() {
-        todo := ToDo{ CreatedBy: t.CreatedBy}
-        var id int64 = 0;
+	for rows.Next() {
+		todo := ToDo{CreatedBy: t.CreatedBy}
+		var id int64 = 0
 
-        err = rows.Scan(&id, &todo.Title, &todo.Description, &todo.Color, &todo.Deadline, &todo.Tag, &todo.CreatedBy)
+		err = rows.Scan(&id, &todo.Title, &todo.Description, &todo.Color, &todo.Deadline, &todo.Tag, &todo.CreatedBy)
 
-        if err != nil {
-            err = errors.New("internal server error")
-            return nil, err
-        }
+		if err != nil {
+			err = errors.New("internal server error")
+			return nil, err
+		}
 
-		todoMap := map[string]any {
-            "id" : id,
-            "title": todo.Title,
-			"deadline" : todo.Deadline,
-            "color": todo.Color,
-			"description" : todo.Description,
-			"tag" : todo.Tag,
-            "created_by" : todo.CreatedBy,
-        }
+		todoMap := map[string]any{
+			"id":          id,
+			"title":       todo.Title,
+			"deadline":    todo.Deadline,
+			"color":       todo.Color,
+			"description": todo.Description,
+			"tag":         todo.Tag,
+			"created_by":  todo.CreatedBy,
+		}
 
-        todos = append(todos, todoMap)
-    }
+		todos = append(todos, todoMap)
+	}
 
-    return todos, nil
+	return todos, nil
 }
