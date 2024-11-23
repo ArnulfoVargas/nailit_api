@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/ArnulfoVargas/nailit_api.git/cmd/models"
 	"github.com/ArnulfoVargas/nailit_api.git/cmd/utilities"
@@ -19,6 +21,36 @@ func NewToDoController(db *sql.DB) *ToDoController {
 	}
 }
 
+func ReadToDoFromJson(todo *models.ToDo, body []byte) (error) {
+	holder := make(map[string]any)
+	err := utilities.ReadJson(body, &holder)
+	errDefinition := errors.New("invalid definition")
+
+	if err != nil {
+		return errDefinition
+	}
+
+	unix, ok1 := holder["deadline"].(int64)
+	color, ok2 := holder["color"].(uint)
+	userId, ok3 := holder["created_by"].(int64)
+	desc, ok4 := holder["description"].(string)
+	title, ok5 := holder["title"].(string)
+	tag, ok6 := holder["tag"].(int64)
+	
+
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 {
+		return errDefinition
+	} 
+
+	todo.Deadline = time.UnixMilli(unix)
+	todo.Color = color
+	todo.CreatedBy = userId
+	todo.Description = desc
+	todo.Title = title
+	todo.Tag = tag
+	return nil
+}
+
 func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 	todo := models.ToDo{}
 	code := http.StatusInternalServerError
@@ -27,12 +59,13 @@ func (t *ToDoController) CreateToDo(c *fiber.Ctx) error {
 		c.Status(code)
 	}()
 
-	err := utilities.ReadJson(c.Body(), &todo)
+	err := ReadToDoFromJson(&todo, c.Body())
+
 	if err != nil {
 		code = http.StatusBadRequest
 		return c.JSON(models.Response{
 			Status: code,
-			ErrorMsg: "invalid to do definition",
+			ErrorMsg: err.Error(),
 		})
 	}
 
@@ -75,7 +108,7 @@ func (t *ToDoController) CreateUpdateOrDeleteFuncs(delete bool) func(*fiber.Ctx)
 			})
 		}
 
-		err = utilities.ReadJson(c.Body(), &todo)
+		err = ReadToDoFromJson(&todo, c.Body()) 
 
 		if err != nil {
 			code = http.StatusBadRequest
