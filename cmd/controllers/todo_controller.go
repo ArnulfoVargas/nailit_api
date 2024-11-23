@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/ArnulfoVargas/nailit_api.git/cmd/models"
@@ -39,7 +40,7 @@ func ReadToDoFromJson(todo *models.ToDo, body []byte) error {
 	tag, ok6 := holder["tag"].(int64)
 
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 {
-		return fmt.Errorf("error format unix: %t, color: %t, user: %t, desc: %t, title: %t, tag: %t \n%-v", ok1, ok2, ok3, ok4, ok5, ok6, holder)
+		return fmt.Errorf("error %-v", reflect.TypeOf(holder["deadline"]))
 	}
 
 	todo.Deadline = time.UnixMilli(unix)
