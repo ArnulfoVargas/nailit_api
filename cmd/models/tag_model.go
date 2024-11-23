@@ -100,10 +100,10 @@ func (t *Tag) InsertTag(db *sql.DB) (int64, error) {
     var err error
 
     if active, err := t.CheckUserIsActive(db) ; !active || err != nil {
-        return -1, errors.New("invalid user")
+        return -1, errors.New("invalid user askldfja")
     }
 
-    if premium, err :=t.VerifyUserIsPremium(db) ; premium {
+    if premium, err := t.VerifyUserIsPremium(db) ; premium {
         if err != nil {
             return -1, errors.New("invalid user")
         }

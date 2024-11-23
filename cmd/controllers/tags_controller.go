@@ -41,6 +41,10 @@ func (t *TagsController) CreateTag(c *fiber.Ctx) error {
 
 	if err != nil {
 		code = http.StatusConflict
+		return c.JSON(models.Response{
+			Status: code,
+			ErrorMsg: err.Error(),
+		})
 	} else {
 		code = http.StatusOK
 	}
