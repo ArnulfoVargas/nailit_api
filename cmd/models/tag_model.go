@@ -200,7 +200,7 @@ func (t *Tag) DeleteAllTagsFromUserId(db *sql.DB) (error) {
 
     defer stm.Close()
 
-    _, err = stm.Exec()
+    _, err = stm.Exec(t.CreatedBy)
 
     if err != nil {
         err = errors.New("error deleting")
