@@ -150,6 +150,8 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 		orderedTodos[id] = append(orderedTodos[id], to)
 	}
 
+	orderedTodos[0] = todos;
+
 	code = http.StatusOK
 	return c.JSON(models.Response{
 		Status: code,
