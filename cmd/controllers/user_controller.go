@@ -33,7 +33,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 	c.Status(http.StatusUnauthorized)
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
+			Status:   http.StatusUnauthorized,
 			ErrorMsg: "Invalid",
 		})
 	}
@@ -43,7 +43,7 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
+			Status:   http.StatusUnauthorized,
 			ErrorMsg: "Invalid",
 		})
 	}
@@ -54,9 +54,9 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 
 	err = user.GetUserById(data.Id, u.db)
 
-	if  err != nil {
+	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
+			Status:   http.StatusUnauthorized,
 			ErrorMsg: "Invalid user credentials",
 		})
 	}
@@ -65,8 +65,8 @@ func (u *UserController) ValidateToken(c *fiber.Ctx) error {
 	return c.JSON(models.Response{
 		Status: http.StatusAccepted,
 		Body: fiber.Map{
-			"id": data.Id,
-			"user" : user,
+			"id":   data.Id,
+			"user": user,
 		},
 	})
 }
@@ -78,7 +78,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	if ok, err := user.ValidateUser(); !ok && err != nil {
 		c.Status(http.StatusBadRequest)
 		return c.JSON(models.Response{
-			Status: http.StatusBadRequest,
+			Status:   http.StatusBadRequest,
 			ErrorMsg: "Invalid fields",
 		})
 	}
@@ -88,7 +88,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -96,7 +96,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	if count != 0 {
 		c.Status(http.StatusConflict)
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Mail already in use",
 		})
 	}
@@ -104,7 +104,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	hash, err := user.GeneratePasswordHash()
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -113,7 +113,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -122,7 +122,7 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -131,9 +131,9 @@ func (u *UserController) Register(c *fiber.Ctx) error {
 	return c.JSON(models.Response{
 		Status: http.StatusCreated,
 		Body: fiber.Map{
-			"id": lastId,
-			"tk": tk,
-			"user" : user,
+			"id":   lastId,
+			"tk":   tk,
+			"user": user,
 		},
 	})
 }
@@ -145,7 +145,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	err := utilities.ReadJson(c.Body(), &userDto)
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -153,7 +153,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	if ok, err := userDto.ValidateUser(); !ok && err != nil {
 		c.Status(http.StatusBadRequest)
 		return c.JSON(models.Response{
-			Status: http.StatusBadRequest,
+			Status:   http.StatusBadRequest,
 			ErrorMsg: "Invalid fields",
 		})
 	}
@@ -163,16 +163,16 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	if err != nil {
 		c.Status(http.StatusBadRequest)
 		return c.JSON(models.Response{
-			Status: http.StatusBadRequest,
+			Status:   http.StatusBadRequest,
 			ErrorMsg: "Invalid id",
 		})
 	}
 
-	valid, err := userDto.VerifyUserIdIsActive(id, u.db)	
+	valid, err := userDto.VerifyUserIdIsActive(id, u.db)
 
 	if !valid || err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -181,7 +181,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -189,7 +189,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	if count != 0 {
 		c.Status(http.StatusConflict)
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "New mail already in use",
 		})
 	}
@@ -198,7 +198,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -207,7 +207,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -216,7 +216,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -225,16 +225,16 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
 		Body: fiber.Map{
-			"id": id,
-			"user" : userDto,
-			"tk" : tk,
+			"id":   id,
+			"user": userDto,
+			"tk":   tk,
 		},
 	})
 }
 
 func (u *UserController) Delete(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
-	statusCode := http.StatusBadRequest;
+	statusCode := http.StatusBadRequest
 
 	defer func() {
 		c.Status(statusCode)
@@ -242,7 +242,7 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusBadRequest,
+			Status:   http.StatusBadRequest,
 			ErrorMsg: "Invalid parameter",
 		})
 	}
@@ -253,17 +253,17 @@ func (u *UserController) Delete(c *fiber.Ctx) error {
 	if !valid || err != nil {
 		statusCode = http.StatusConflict
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
-	}	
-	
+	}
+
 	err = user.DeleteUser(id, u.db)
 
 	if err != nil {
 		statusCode = http.StatusInternalServerError
 		return c.JSON(models.Response{
-			Status: http.StatusInternalServerError,
+			Status:   http.StatusInternalServerError,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -279,7 +279,7 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Invalid input fields",
 		})
 	}
@@ -288,23 +288,23 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
-			ErrorMsg: "Error while validating fields",
+			Status:   http.StatusConflict,
+			ErrorMsg: err.Error(),
 		})
 	}
 
 	if id == -1 || passwordHash == "" {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Incorrect mail or password",
 		})
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(userDto.Password))
 
-	if (err != nil) {
+	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
+			Status:   http.StatusUnauthorized,
 			ErrorMsg: "Incorrect mail or password",
 		})
 	}
@@ -313,16 +313,16 @@ func (u *UserController) Login(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
 		Body: fiber.Map{
-			"tk" : tk,
-			"id" : id,
-			"user" : userDto,
+			"tk":   tk,
+			"id":   id,
+			"user": userDto,
 		},
 	})
 }
@@ -332,7 +332,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -340,9 +340,9 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 	userDto := models.UserDTO{}
 	valid, err := userDto.VerifyUserIdIsActive(id, u.db)
 
-	if !valid || err != nil{
+	if !valid || err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusUnauthorized,
+			Status:   http.StatusUnauthorized,
 			ErrorMsg: "Invalid user",
 		})
 	}
@@ -351,17 +351,17 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
 
 	return c.JSON(models.Response{
-		Status: http.StatusOK,
+		Status:   http.StatusOK,
 		ErrorMsg: "",
 		Body: fiber.Map{
-			"id" : id,
-			"expiracy" : expiracy.UnixMilli(),
+			"id":       id,
+			"expiracy": expiracy.UnixMilli(),
 		},
 	})
 }
@@ -373,7 +373,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -391,9 +391,9 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 
 	if err != nil || len(files) == 0 {
 		return c.JSON(models.Response{
-			Status: http.StatusBadRequest,
+			Status:   http.StatusBadRequest,
 			ErrorMsg: "File doesnt exist",
-			Body: form.File,
+			Body:     form.File,
 		})
 	}
 
@@ -401,7 +401,7 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 	res, err := uploadImage(cld, ctx, file)
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusBadRequest,
+			Status:   http.StatusBadRequest,
 			ErrorMsg: "Cannot upload image",
 		})
 	}
@@ -410,14 +410,14 @@ func (u *UserController) UpdateProfileImage(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
 
 	return c.JSON(models.Response{
 		Status: http.StatusOK,
-		Body: res.SecureURL,
+		Body:   res.SecureURL,
 	})
 }
 
@@ -428,14 +428,14 @@ func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
 
 	if publicId == "" {
 		return c.JSON(models.Response{
-			Status: http.StatusNoContent,
+			Status:   http.StatusNoContent,
 			ErrorMsg: "No such image",
 		})
 	}
@@ -448,7 +448,7 @@ func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -457,7 +457,7 @@ func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 
 	if err != nil {
 		return c.JSON(models.Response{
-			Status: http.StatusConflict,
+			Status:   http.StatusConflict,
 			ErrorMsg: "Unexpected error",
 		})
 	}
@@ -469,14 +469,14 @@ func (u *UserController) RemoveProfileImage(c *fiber.Ctx) error {
 	})
 }
 
-func creds() (*cloudinary.Cloudinary, context.Context){
+func creds() (*cloudinary.Cloudinary, context.Context) {
 	cld, _ := cloudinary.NewFromParams(
-		os.Getenv("CLOUDINARY_CLOUD"), 
-		os.Getenv("CLOUDINARY_KEY"), 
+		os.Getenv("CLOUDINARY_CLOUD"),
+		os.Getenv("CLOUDINARY_KEY"),
 		os.Getenv("CLOUDINARY_SECRET"))
 
 	cld.Config.URL = config.URL{}
-	cld.Config.URL.Secure = true;
+	cld.Config.URL.Secure = true
 	ctx := context.Background()
 
 	return cld, ctx
@@ -485,4 +485,4 @@ func creds() (*cloudinary.Cloudinary, context.Context){
 func uploadImage(cld *cloudinary.Cloudinary, ctx context.Context, img interface{}) (*uploader.UploadResult, error) {
 	res, err := cld.Upload.Upload(ctx, img, uploader.UploadParams{})
 	return res, err
-} 
+}
