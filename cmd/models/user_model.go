@@ -150,7 +150,7 @@ func (u *UserDTO) GetUserById(id int64, db *sql.DB) error {
 }
 
 func (u *UserDTO) GetUserByMail(db *sql.DB) (int, string,error) {
-	stm, err := db.Prepare("SELECT id_user, password, name, mail, phone, user_type, image_url FROM users WHERE mail = ? AND status = 1 LIMIT 1;")
+	stm, err := db.Prepare("SELECT id_user, password, name, phone, user_type, image_url FROM users WHERE mail = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return -1, "",err
