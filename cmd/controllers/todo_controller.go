@@ -175,7 +175,7 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 			code = http.StatusInternalServerError
 			return c.JSON(models.Response{
 				Status:   code,
-				ErrorMsg: "internal server error",
+				ErrorMsg: "internal server error creating map",
 			})
 		}
 

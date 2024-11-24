@@ -230,7 +230,7 @@ func (t *ToDo) GetAllToDosFromUserId(db *sql.DB) ([]map[string]any, error) {
 	rows, err := stm.Query(t.CreatedBy)
 
 	if err != nil {
-		err = errors.New("internal server error")
+		// err = errors.New("internal server error")
 		return nil, err
 	}
 
@@ -243,7 +243,7 @@ func (t *ToDo) GetAllToDosFromUserId(db *sql.DB) ([]map[string]any, error) {
 		err = rows.Scan(&id, &todo.Title, &todo.Description, &todo.Color, &todo.Deadline, &todo.Tag, &todo.CreatedBy)
 
 		if err != nil {
-			err = errors.New("internal server error")
+			err = errors.New("internal server error scanning")
 			return nil, err
 		}
 
