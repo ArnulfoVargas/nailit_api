@@ -230,7 +230,7 @@ func (t *ToDo) GetAllToDosFromUserId(db *sql.DB) ([]map[string]any, error) {
 	rows, err := stm.Query(t.CreatedBy)
 
 	if err != nil {
-		// err = errors.New("internal server error")
+		err = errors.New("internal server error")
 		return nil, err
 	}
 
