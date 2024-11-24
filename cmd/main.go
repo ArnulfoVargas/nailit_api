@@ -7,24 +7,24 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type Server struct {
-	db *sql.DB
+	db   *sql.DB
 	port string
-	app *fiber.App
+	app  *fiber.App
 }
 
 func main() {
-	godotenv.Load();
+	godotenv.Load()
 
 	server := Server{}
 	server.openDB()
 
-	server.port = ":"+os.Getenv("PORT")
+	server.port = ":" + os.Getenv("PORT")
 
 	server.app = fiber.New()
 	server.handleControllers()
@@ -37,7 +37,7 @@ func (server *Server) openDB() {
 	pass := os.Getenv("DB_PASSWORD")
 	host := os.Getenv("DB_HOST")
 	name := os.Getenv("DB_NAME")
-	
+
 	builder := strings.Builder{}
 
 	builder.WriteString(user)
@@ -48,6 +48,7 @@ func (server *Server) openDB() {
 	builder.WriteString(host)
 	builder.WriteString(":3306)/")
 	builder.WriteString(name)
+	builder.WriteString("?parseTime=true")
 
 	db, err := sql.Open("mysql", builder.String())
 	if err != nil {
@@ -59,5 +60,5 @@ func (server *Server) openDB() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 
-	server.db = db;
+	server.db = db
 }
