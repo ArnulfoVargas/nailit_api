@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -166,23 +167,45 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 		})
 	}
 
-	orderedTodos := make(map[any][]map[string]any)
+	orderedTodos := make(map[int64]string)
 
 	for _, to := range todos {
-		id, ok := to["id"]
+		tag, ok := to["tag"].(int64)
 
 		if !ok {
 			code = http.StatusInternalServerError
 			return c.JSON(models.Response{
 				Status:   code,
-				ErrorMsg: "internal server error creating map",
+				ErrorMsg: "internal server error on tag",
 			})
 		}
 
-		orderedTodos[id] = append(orderedTodos[id], to)
+		b, err := json.Marshal(to)
+
+		if err != nil {
+			code = http.StatusInternalServerError
+			return c.JSON(models.Response{
+				Status:   code,
+				ErrorMsg: err.Error(),
+			})
+		}
+		jsStr := string(b)
+
+		orderedTodos[tag] = jsStr
 	}
 
-	orderedTodos[0] = todos
+	b, err := json.Marshal(todos)
+
+		if err != nil {
+			code = http.StatusInternalServerError
+			return c.JSON(models.Response{
+				Status:   code,
+				ErrorMsg: err.Error(),
+			})
+		}
+
+	js := string(b)
+	orderedTodos[0] = js
 
 	code = http.StatusOK
 	return c.JSON(models.Response{
