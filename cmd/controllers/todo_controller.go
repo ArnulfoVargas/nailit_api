@@ -167,50 +167,9 @@ func (t *ToDoController) GetAllToDosFromUserId(c *fiber.Ctx) error {
 		})
 	}
 
-	orderedTodos := make(map[int64]string)
-
-	for _, to := range todos {
-		tag, ok := to["tag"].(int64)
-
-		if !ok {
-			code = http.StatusInternalServerError
-			return c.JSON(models.Response{
-				Status:   code,
-				ErrorMsg: "internal server error on tag",
-			})
-		}
-
-		b, err := json.Marshal(to)
-
-		if err != nil {
-			code = http.StatusInternalServerError
-			return c.JSON(models.Response{
-				Status:   code,
-				ErrorMsg: err.Error(),
-			})
-		}
-		jsStr := string(b)
-
-		orderedTodos[tag] = jsStr
-	}
-
-	b, err := json.Marshal(todos)
-
-		if err != nil {
-			code = http.StatusInternalServerError
-			return c.JSON(models.Response{
-				Status:   code,
-				ErrorMsg: err.Error(),
-			})
-		}
-
-	js := string(b)
-	orderedTodos[0] = js
-
-	code = http.StatusOK
 	return c.JSON(models.Response{
 		Status: code,
-		Body:   orderedTodos,
+		Body:   todos,
 	})
 }
 
