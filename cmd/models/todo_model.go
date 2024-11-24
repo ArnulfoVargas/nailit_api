@@ -144,13 +144,13 @@ func (t *ToDo) UpdateToDoById(id int64, delete bool, db *sql.DB) error {
 		query = "UPDATE todos SET status = 0, updated_at = now() WHERE id_todo = ? AND created_by = ? LIMIT 1;"
 	} else {
 		errorMsg = "Coundnt update todo"
-		query = "UPDATE todos SET title = ?, description = ?, color = ?, deadline = ?, tag = ?, updated_at = now() WHERE id_tag = ? AND created_by = ? LIMIT 1;"
+		query = "UPDATE todos SET title = ?, description = ?, color = ?, deadline = ?, tag = ?, updated_at = now() WHERE id_todo = ? AND created_by = ? LIMIT 1;"
 	}
 
 	stm, err := db.Prepare(query)
 
 	if err != nil {
-		return err
+		return errors.New(errorMsg)
 	}
 
 	defer stm.Close()
@@ -162,11 +162,11 @@ func (t *ToDo) UpdateToDoById(id int64, delete bool, db *sql.DB) error {
 			return errors.New(errorMsg)
 		}
 	} else {
-		res, err := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, id, t.CreatedBy)
-		affected, _ := res.RowsAffected()
+		res, _ := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, id, t.CreatedBy)
+		affected, err := res.RowsAffected()
 
 		if affected != 1 || err != nil {
-			return err
+			return errors.New(errorMsg)
 		}
 	}
 
