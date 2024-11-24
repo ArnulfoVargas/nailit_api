@@ -44,7 +44,7 @@ func (t *ToDo) VerifyUserIsPremium(db *sql.DB) (bool, error) {
 }
 
 func (t *ToDo) ToDoExists(id int64, db *sql.DB) (bool, error) {
-	stm, err := db.Prepare("SELECT COUNT(*) FROM todos WHERE id_todo = ? AND status = ? LIMIT 1;")
+	stm, err := db.Prepare("SELECT COUNT(*) FROM todos WHERE id_todo = ? AND status = 1 LIMIT 1;")
 	notFound := errors.New("to do not found")
 
 	if err != nil {
