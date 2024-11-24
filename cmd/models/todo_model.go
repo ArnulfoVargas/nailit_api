@@ -150,7 +150,7 @@ func (t *ToDo) UpdateToDoById(id int64, delete bool, db *sql.DB) error {
 	stm, err := db.Prepare(query)
 
 	if err != nil {
-		return errors.New(errorMsg)
+		return err
 	}
 
 	defer stm.Close()
@@ -162,11 +162,11 @@ func (t *ToDo) UpdateToDoById(id int64, delete bool, db *sql.DB) error {
 			return errors.New(errorMsg)
 		}
 	} else {
-		res, _ := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, id, t.CreatedBy)
-		affected, err := res.RowsAffected()
+		res, err := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, id, t.CreatedBy)
+		affected, _ := res.RowsAffected()
 
 		if affected != 1 || err != nil {
-			return errors.New(errorMsg)
+			return err
 		}
 	}
 
