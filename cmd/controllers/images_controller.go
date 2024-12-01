@@ -62,7 +62,7 @@ func (i *ImageController) PostImage(c *fiber.Ctx) error {
 		return c.JSON(response)
 	}
 
-	imageId, err := i.UploadImage(res, id)
+	imageId, err := i.uploadImage(res, id)
 
 	if err != nil {
 		status = http.StatusInternalServerError
@@ -80,7 +80,7 @@ func (i *ImageController) PostImage(c *fiber.Ctx) error {
 	})
 }
 
-func (i *ImageController) UploadImage(r *uploader.UploadResult, userId int) (int64, error) {
+func (i *ImageController) uploadImage(r *uploader.UploadResult, userId int) (int64, error) {
 	stm, err := i.db.Prepare("INSERT INTO images (image_url, public_id, id_user) VALUES (?, ?, ?) LIMIT 1;")
 	if err != nil {
 		return 0, err
@@ -93,4 +93,75 @@ func (i *ImageController) UploadImage(r *uploader.UploadResult, userId int) (int
 	}
 
 	return res.LastInsertId()
+}
+
+func (i *ImageController) GetAllImages(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	status := http.StatusInternalServerError
+	response := models.Response{}
+
+	defer func ()  {
+		response.Status = status
+		c.Status(status)
+	}()
+
+	if err != nil {
+		response.ErrorMsg = "invalid id"
+		return c.JSON(response)
+	}
+
+	t := models.Tag{CreatedBy: int64(id)}
+	if active, err := t.CheckUserIsActive(i.db); !active || err != nil {
+		response.ErrorMsg = "invalid user"
+		status = http.StatusBadRequest
+		return c.JSON(response)
+	}
+
+	images, err := i.getImages(id);
+
+	if err != nil {
+		response.ErrorMsg = "couldnt get images"
+		status = http.StatusInternalServerError
+		return c.JSON(response)
+	}
+	
+	status = http.StatusOK
+	return c.JSON(models.Response{
+		Status: status,
+		ErrorMsg: "",
+		Body: images,
+	})
+}
+
+func (i *ImageController) getImages(userId int) ([]Img, error) {
+	stm, err := i.db.Prepare("SELECT id_image, image_url FROM images WHERE id_user = ?;")
+	if err != nil {
+		return nil, err
+	}
+	defer stm.Close()
+
+	rows, err := stm.Query(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	imgs := make([]Img, 0)
+
+	for rows.Next() {
+		img := Img{}
+		err := rows.Scan(&img.Id, &img.Url)
+
+		if err != nil {
+			return nil, err
+		}
+
+		imgs = append(imgs, img)
+	}
+
+	return imgs, nil;
+}
+
+type Img struct {
+	Id int64 `json:"id"`
+	Url string `json:"url"`
 }

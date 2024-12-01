@@ -64,4 +64,5 @@ func (server *Server) mapPinnedImages() {
 	imagesGroup := server.app.Group("/pinnedimages")
 
 	imagesGroup.Post("/user/:id", imagesController.PostImage)
+	imagesGroup.Get("/user/:id", imagesController.GetAllImages)
 }
