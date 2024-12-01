@@ -252,7 +252,7 @@ func (u UserDTO) DeleteUser(id int, db *sql.DB) error {
 }
 
 func (u UserDTO) getPremiumExpiracyDate(id int, db *sql.DB) (time.Time, error) {
-	stm, err := db.Prepare("SELECT premium_expiracy FROM users WHERE id = ? AND status = 1 LIMIT 1;")
+	stm, err := db.Prepare("SELECT premium_expiracy FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
 
 	if err != nil {
 		return time.Time{}, err
