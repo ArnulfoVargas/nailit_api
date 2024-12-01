@@ -333,7 +333,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status:   http.StatusConflict,
-			ErrorMsg: "Unexpected error",
+			ErrorMsg: err.Error(),
 		})
 	}
 
@@ -352,7 +352,7 @@ func (u *UserController) ConvertToPremium(c *fiber.Ctx) error {
 	if err != nil {
 		return c.JSON(models.Response{
 			Status:   http.StatusConflict,
-			ErrorMsg: "Unexpected error",
+			ErrorMsg: err.Error(),
 		})
 	}
 

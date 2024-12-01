@@ -56,3 +56,11 @@ func (server *Server) mapToDosRoutes() {
 	toDosGroup.Delete("/delete/:id", toDosController.CreateUpdateOrDeleteFuncs(true))
 	toDosGroup.Delete("/delete/user/:id", toDosController.DeleteAllToDosFromUserId)
 }
+
+func (server *Server) mapPinnedImages() {
+	imagesController := controllers.NewImageControler(server.db)
+
+	imagesGroup := server.app.Group("/pinnedimages")
+
+	imagesGroup.Post("/user/:id", imagesController.PostImage)
+}
