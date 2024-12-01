@@ -15,6 +15,7 @@ func (server *Server) handleControllers() {
 	server.mapUserRoutes()
 	server.mapTagsRoutes()
 	server.mapToDosRoutes()
+	server.mapPinnedImages()
 }
 
 func (server *Server) mapUserRoutes() {
