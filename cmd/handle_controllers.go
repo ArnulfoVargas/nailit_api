@@ -65,4 +65,5 @@ func (server *Server) mapPinnedImages() {
 
 	imagesGroup.Post("/user/:id", imagesController.PostImage)
 	imagesGroup.Get("/user/:id", imagesController.GetAllImages)
+	imagesGroup.Delete("/:id", imagesController.DeleteImage)
 }

@@ -24,7 +24,7 @@ func (i *ImageController) PostImage(c *fiber.Ctx) error {
 	status := http.StatusInternalServerError
 	response := models.Response{}
 
-	defer func ()  {
+	defer func() {
 		response.Status = status
 		c.Status(status)
 	}()
@@ -71,10 +71,10 @@ func (i *ImageController) PostImage(c *fiber.Ctx) error {
 	}
 	status = http.StatusCreated
 	return c.JSON(models.Response{
-		Status: status,
+		Status:   status,
 		ErrorMsg: "",
 		Body: fiber.Map{
-			"id" : imageId,
+			"id":  imageId,
 			"url": res.SecureURL,
 		},
 	})
@@ -100,7 +100,7 @@ func (i *ImageController) GetAllImages(c *fiber.Ctx) error {
 	status := http.StatusInternalServerError
 	response := models.Response{}
 
-	defer func ()  {
+	defer func() {
 		response.Status = status
 		c.Status(status)
 	}()
@@ -117,19 +117,63 @@ func (i *ImageController) GetAllImages(c *fiber.Ctx) error {
 		return c.JSON(response)
 	}
 
-	images, err := i.getImages(id);
+	images, err := i.getImages(id)
 
 	if err != nil {
 		response.ErrorMsg = "couldnt get images"
 		status = http.StatusInternalServerError
 		return c.JSON(response)
 	}
-	
+
 	status = http.StatusOK
 	return c.JSON(models.Response{
-		Status: status,
+		Status:   status,
 		ErrorMsg: "",
-		Body: images,
+		Body:     images,
+	})
+}
+
+func (i *ImageController) DeleteImage(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	status := http.StatusInternalServerError
+	response := models.Response{}
+
+	defer func() {
+		response.Status = status
+		c.Status(status)
+	}()
+
+	if err != nil {
+		response.ErrorMsg = "invalid id"
+		return c.JSON(response)
+	}
+
+	publicId, err := i.getPublicId(id)
+	if err != nil {
+		response.ErrorMsg = "image not found"
+		return c.JSON(response)
+	}
+
+	cld, ctx := creds()
+	_, err = cld.Upload.Destroy(ctx, uploader.DestroyParams{
+		PublicID: publicId,
+	})
+
+	if err != nil {
+		response.ErrorMsg = "image not found"
+		return c.JSON(response)
+	}
+
+	err = i.deleteImage(id)
+	if err != nil {
+		response.ErrorMsg = "cannot delete image"
+		return c.JSON(response)
+	}
+
+	status = http.StatusOK
+	return c.JSON(models.Response{
+		Status:   status,
+		ErrorMsg: "",
 	})
 }
 
@@ -158,10 +202,36 @@ func (i *ImageController) getImages(userId int) ([]Img, error) {
 		imgs = append(imgs, img)
 	}
 
-	return imgs, nil;
+	return imgs, nil
+}
+
+func (i *ImageController) getPublicId(imageId int) (string, error) {
+	stm, err := i.db.Prepare("SELECT public_id FROM images WHERE id_image = ? LIMIT 1;")
+	if err != nil {
+		return "", err
+	}
+	defer stm.Close()
+
+	row := stm.QueryRow(imageId)
+	var publicId string = ""
+
+	err = row.Scan(&publicId)
+
+	return publicId, err
+}
+
+func (i *ImageController) deleteImage(imageId int) error {
+	stm, err := i.db.Prepare("DELETE FROM images WHERE id_image = ? LIMIT 1;")
+	if err != nil {
+		return err
+	}
+	defer stm.Close()
+
+	_, err = stm.Exec(imageId)
+	return err
 }
 
 type Img struct {
-	Id int64 `json:"id"`
+	Id  int64  `json:"id"`
 	Url string `json:"url"`
 }
