@@ -111,6 +111,7 @@ func (t *ToDo) InsertToDo(db *sql.DB) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	defer stm.Close()
 
 	res, err := stm.Exec(t.Title, t.Description, t.Color, t.Deadline, t.Tag, t.CreatedBy)
 
