@@ -177,7 +177,7 @@ func (u *UserController) Edit(c *fiber.Ctx) error {
 		})
 	}
 
-	count, err := userDto.CountUsersByMail(userDto.Mail, u.db)
+	count, err := userDto.CountUsersByMailAvoidingId(userDto.Mail, id, u.db)
 
 	if err != nil {
 		return c.JSON(models.Response{

@@ -112,6 +112,27 @@ func (u UserDTO) CountUsersByMail(mail string, db *sql.DB) (int, error) {
 	return count, nil
 }
 
+func (u UserDTO) CountUsersByMailAvoidingId(mail string, id int, db *sql.DB) (int, error) {
+	count := -1
+
+	stm, err := db.Prepare("SELECT COUNT(*) FROM users WHERE mail= ? AND id_user != ? AND status = 1 LIMIT 1;")
+
+	if err != nil {
+		return count, err
+	}
+
+	defer stm.Close()
+
+	res := stm.QueryRow(mail, id)
+
+	err = res.Scan(&count)
+	if err != nil {
+		return -1, err
+	}
+
+	return count, nil
+}
+
 func (u *UserDTO) GetUserById(id int64, db *sql.DB) error {
 	stm, err := db.Prepare("SELECT name, mail, phone, user_type, image_url FROM users WHERE id_user = ? AND status = 1 LIMIT 1;")
 
